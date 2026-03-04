@@ -1,0 +1,83 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Sepa JS XML",
+  "projectDescription": "A TypeScript library to generate SEPA XML files for credit transfers and direct debits",
+  "theme": "palm",
+  "primaryColor": "#0066CC",
+  "lightColor": "#3399FF",
+  "darkColor": "#004499",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/payment-types",
+              "guides/credit-transfers",
+              "guides/direct-debits",
+              "guides/pain-versions",
+              "guides/validation",
+              "guides/examples"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core",
+            "pages": [
+              "api/create-sepa-xml"
+            ]
+          },
+          {
+            "group": "Data Types",
+            "pages": [
+              "api/sepa-data",
+              "api/creditor-payments",
+              "api/payment",
+              "api/options"
+            ]
+          },
+          {
+            "group": "Enums & Constants",
+            "pages": [
+              "api/pain-versions",
+              "api/types"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Generate SEPA Credit Transfer XML files",
+    "Generate SEPA Direct Debit XML files",
+    "Support for multiple PAIN formats (pain.001 and pain.008)",
+    "Built-in IBAN and BIC validation",
+    "TypeScript support with full type definitions",
+    "Batch booking and individual payment support"
+  ],
+  "publicApiSurface": [
+    "createSepaXML()",
+    "SepaData interface",
+    "CreditorPayments interface",
+    "Payment interface",
+    "Options interface",
+    "GroupHeader interface",
+    "PAIN_VERSIONS type",
+    "LOCAL_INSTRUMENTATION type",
+    "SEQUENCE_TYPE type"
+  ]
+}
