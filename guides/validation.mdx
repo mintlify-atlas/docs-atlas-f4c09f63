@@ -1,0 +1,553 @@
+---
+title: Validation
+description: Understanding IBAN and BIC validation, length constraints, and error handling in Sepa JS XML
+---
+
+Sepa JS XML includes comprehensive validation to ensure your SEPA XML files meet all requirements. This guide covers validation options, constraints, and error handling.
+
+## Validation options
+
+You can control validation behavior with the `Options` interface (from index.ts:10-26):
+
+```typescript
+import { createSepaXML, type Options } from 'sepa-js-xml';
+
+const options: Options = {
+  prettyPrint: false,  // Format XML with indentation
+  checkIBAN: true,     // Validate IBAN codes
+  checkBIC: true       // Validate BIC codes
+};
+
+const xml = createSepaXML(sepaData, options);
+```
+
+### Default values
+
+From the source code (index.ts:139):
+
+```typescript
+options = { 
+  prettyPrint: false, 
+  checkBIC: true, 
+  checkIBAN: true 
+}
+```
+
+<Note>
+All validation is **enabled by default**. You must explicitly disable it if needed.
+</Note>
+
+## IBAN validation
+
+### How it works
+
+IBAN validation uses the [ibantools](https://github.com/Simplify/ibantools) library (from index.ts:7):
+
+```typescript
+import { isValidIBAN } from "ibantools";
+```
+
+### Enabling/disabling
+
+<Tabs>
+  <Tab title="Enabled (default)">
+    ```typescript
+    const xml = createSepaXML(sepaData, {
+      checkIBAN: true // Default behavior
+    });
+    ```
+    
+    The library validates all IBAN codes and throws an error if invalid.
+  </Tab>
+  
+  <Tab title="Disabled">
+    ```typescript
+    const xml = createSepaXML(sepaData, {
+      checkIBAN: false // Skip IBAN validation
+    });
+    ```
+    
+    Use this for testing or when you validate IBANs elsewhere.
+    
+    <Warning>
+    Disabling IBAN validation may result in files rejected by your bank.
+    </Warning>
+  </Tab>
+</Tabs>
+
+### IBAN validation errors
+
+From the source code (index.ts:219-223), IBAN validation errors include the position index:
+
+```typescript
+if (options?.checkIBAN && !isValidIBAN(item.iban)) {
+  throw new Error(
+    `sepaData.positions[${index}].iban is not valid (${item.iban})`,
+  );
+}
+```
+
+<CodeGroup>
+```typescript Invalid IBAN
+const xml = createSepaXML({
+  id: "Test",
+  creationDate: new Date(),
+  initiatorName: "Test",
+  positions: [{
+    name: "Test",
+    iban: "INVALID", // Invalid IBAN
+    bic: "SSKMDEMM",
+    id: "123",
+    requestedExecutionDate: new Date(),
+    payments: []
+  }]
+});
+// Error: sepaData.positions[0].iban is not valid (INVALID)
+```
+
+```typescript Valid IBAN
+const xml = createSepaXML({
+  // ... same config
+  positions: [{
+    iban: "DE02701500000000594937", // Valid German IBAN
+    // ... rest of config
+  }]
+});
+// Success - XML generated
+```
+</CodeGroup>
+
+### Supported IBAN formats
+
+The ibantools library supports all SEPA country IBANs:
+
+<AccordionGroup>
+  <Accordion title="Common SEPA countries">
+    - **DE** - Germany (22 characters)
+    - **FR** - France (27 characters)
+    - **IT** - Italy (27 characters)
+    - **ES** - Spain (24 characters)
+    - **NL** - Netherlands (18 characters)
+    - **BE** - Belgium (16 characters)
+    - **AT** - Austria (20 characters)
+  </Accordion>
+  
+  <Accordion title="All SEPA countries">
+    AT, BE, BG, CH, CY, CZ, DE, DK, EE, ES, FI, FR, GB, GI, GR, HR, HU, IE, IS, IT, LI, LT, LU, LV, MC, MT, NL, NO, PL, PT, RO, SE, SI, SK, SM, VA
+  </Accordion>
+</AccordionGroup>
+
+## BIC validation
+
+### How it works
+
+BIC validation also uses ibantools (from index.ts:7):
+
+```typescript
+import { isValidBIC } from "ibantools";
+```
+
+### Enabling/disabling
+
+<Tabs>
+  <Tab title="Enabled (default)">
+    ```typescript
+    const xml = createSepaXML(sepaData, {
+      checkBIC: true // Default behavior
+    });
+    ```
+    
+    The library validates all BIC codes and throws an error if invalid.
+  </Tab>
+  
+  <Tab title="Disabled">
+    ```typescript
+    const xml = createSepaXML(sepaData, {
+      checkBIC: false // Skip BIC validation
+    });
+    ```
+    
+    Useful when:
+    - Using PAIN version 03 (BIC optional)
+    - Testing with dummy data
+    - BIC validation done elsewhere
+  </Tab>
+</Tabs>
+
+### BIC validation errors
+
+From the source code (index.ts:226-230):
+
+```typescript
+if (options?.checkBIC && (item.bic ? !isValidBIC(item.bic) : bicOptional)) {
+  throw new Error(
+    `sepaData.positions[${index}].bic is not valid (${item.bic})`,
+  );
+}
+```
+
+<CodeGroup>
+```typescript Invalid BIC
+const xml = createSepaXML({
+  id: "Test",
+  creationDate: new Date(),
+  initiatorName: "Test",
+  positions: [{
+    name: "Test",
+    iban: "DE02701500000000594937",
+    bic: "INVALID", // Invalid BIC
+    id: "123",
+    requestedExecutionDate: new Date(),
+    payments: []
+  }]
+});
+// Error: sepaData.positions[0].bic is not valid (INVALID)
+```
+
+```typescript Valid BIC
+const xml = createSepaXML({
+  // ... same config
+  positions: [{
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM", // Valid BIC
+    // ... rest of config
+  }]
+});
+// Success - XML generated
+```
+</CodeGroup>
+
+### BIC format
+
+Valid BIC codes:
+- **8 characters**: `SSKMDEMMXXX`
+- **11 characters**: `SSKMDEMM` (branch code optional)
+- Format: `AAAABBCCDDD` where:
+  - `AAAA` = Bank code
+  - `BB` = Country code
+  - `CC` = Location code
+  - `DDD` = Branch code (optional)
+
+### BIC optional scenarios
+
+From the source code (index.ts:225, index.ts:374-376), BIC is optional for:
+
+1. **Direct debits** (creditor side) - all versions
+2. **Credit transfers** (both sides) - PAIN version 03 only
+
+```typescript
+// BIC optional - no error even with checkBIC: true
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03",
+  // ... other fields
+  positions: [{
+    iban: "DE02701500000000594937",
+    // bic not provided - OK for version 03
+    payments: [{
+      iban: "DE89370400440532013000"
+      // bic not provided - OK for version 03
+    }]
+  }]
+}, {
+  checkBIC: true // Still validates if BIC is provided
+});
+```
+
+## Length constraints
+
+The library enforces maximum length constraints (from index.ts:399-403):
+
+```typescript
+function checkLength(value: string, name: string, length: number) {
+  if (value.length > length) {
+    throw new Error(`Max length for ${name} is ${length} (${value})`);
+  }
+}
+```
+
+### Field length limits
+
+<ParamField path="id" type="string">
+  **Maximum: 35 characters**
+  
+  Applies to:
+  - `sepaData.id` (from index.ts:155)
+  - `positions[].id` (from index.ts:217)
+  - `payments[].id` (from index.ts:318-322)
+</ParamField>
+
+<ParamField path="name" type="string">
+  **Maximum: 70 characters**
+  
+  Applies to:
+  - `sepaData.initiatorName` (from index.ts:156)
+  - `positions[].name` (from index.ts:218)
+  - `payments[].name` (from index.ts:323-327)
+</ParamField>
+
+### Length validation errors
+
+<CodeGroup>
+```typescript ID too long
+const xml = createSepaXML({
+  id: "123456789012345678901234567890123456", // 36 chars - too long!
+  creationDate: new Date(),
+  initiatorName: "Test",
+  positions: []
+});
+// Error: Max length for sepaData.id is 35 (123456789012345678901234567890123456)
+```
+
+```typescript Name too long
+const xml = createSepaXML({
+  id: "MSG001",
+  creationDate: new Date(),
+  initiatorName: "This is a very long company name that exceeds the maximum allowed length of seventy characters", // 95 chars - too long!
+  positions: []
+});
+// Error: Max length for sepaData.initiatorName is 70 (...)
+```
+
+```typescript Valid lengths
+const xml = createSepaXML({
+  id: "MSG001", // 6 chars - OK
+  creationDate: new Date(),
+  initiatorName: "My Company Ltd", // 15 chars - OK
+  positions: [{
+    id: "PMT001", // 6 chars - OK
+    name: "My Company Ltd", // 15 chars - OK
+    // ... rest of config
+    payments: [{
+      id: "TXN001", // 6 chars - OK
+      name: "Supplier Inc", // 12 chars - OK
+      // ... rest of config
+    }]
+  }]
+});
+// Success - all lengths valid
+```
+</CodeGroup>
+
+## Error handling
+
+### Try-catch pattern
+
+Wrap `createSepaXML` in a try-catch block:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+try {
+  const xml = createSepaXML({
+    id: "MSG001",
+    creationDate: new Date(),
+    initiatorName: "My Company",
+    positions: [{
+      id: "PMT001",
+      name: "My Company",
+      iban: "DE02701500000000594937",
+      bic: "SSKMDEMM",
+      requestedExecutionDate: new Date(),
+      payments: [{
+        id: "TXN001",
+        name: "Customer A",
+        iban: "INVALID_IBAN",
+        amount: 100.00,
+        remittanceInformation: "Payment"
+      }]
+    }]
+  });
+  
+  console.log("XML generated successfully");
+  return xml;
+  
+} catch (error) {
+  console.error("Validation failed:", error.message);
+  // Handle the error appropriately
+  // Error: sepaData.positions[0].payments[0].iban is not valid (INVALID_IBAN)
+}
+```
+
+### Common validation errors
+
+<AccordionGroup>
+  <Accordion title="Invalid IBAN">
+    ```
+    Error: sepaData.positions[0].iban is not valid (INVALID)
+    ```
+    
+    **Cause**: IBAN fails checksum or format validation
+    
+    **Solution**: Verify IBAN with customer or use a valid IBAN from your bank
+  </Accordion>
+  
+  <Accordion title="Invalid BIC">
+    ```
+    Error: sepaData.positions[0].bic is not valid (INVALID)
+    ```
+    
+    **Cause**: BIC doesn't match expected format
+    
+    **Solution**: Use 8 or 11 character BIC code, or omit for PAIN v03
+  </Accordion>
+  
+  <Accordion title="Field too long">
+    ```
+    Error: Max length for sepaData.id is 35 (very_long_identifier_that_exceeds_the_limit)
+    ```
+    
+    **Cause**: Field exceeds maximum allowed length
+    
+    **Solution**: Truncate the value to fit within the limit
+  </Accordion>
+  
+  <Accordion title="Missing end-to-end reference">
+    ```
+    Error: sepaData.positions[0].payments[0].end2endReference is required with the selected pain version
+    ```
+    
+    **Cause**: Using PAIN v03 without end-to-end reference (from index.ts:338-341)
+    
+    **Solution**: Add `end2endReference` field or use PAIN v02
+  </Accordion>
+</AccordionGroup>
+
+### Validation in tests
+
+From the test file (index.test.ts:106-123, 125-143, 145-163):
+
+<CodeGroup>
+```typescript Test ID length
+test("check id error", () => {
+  expect(() =>
+    createSepaXML({
+      id: "123456789123456789123456789123456789", // 36 chars
+      creationDate: new Date(),
+      initiatorName: "Test",
+      positions: [],
+    }, {
+      checkIBAN: true,
+      checkBIC: true,
+    })
+  ).toThrow(
+    "Max length for sepaData.id is 35 (123456789123456789123456789123456789)"
+  );
+});
+```
+
+```typescript Test IBAN validation
+test("check iban validation", () => {
+  expect(() =>
+    createSepaXML({
+      id: "Test",
+      creationDate: new Date(),
+      initiatorName: "Test",
+      positions: [{
+        name: "Test",
+        iban: "Test", // Invalid IBAN
+        bic: "Test",
+        id: "123",
+        payments: [],
+        requestedExecutionDate: new Date(),
+      }],
+    })
+  ).toThrow("sepaData.positions[0].iban is not valid (Test)");
+});
+```
+
+```typescript Test BIC validation
+test("check bic validation", () => {
+  expect(() =>
+    createSepaXML({
+      id: "Test",
+      creationDate: new Date(),
+      initiatorName: "Test",
+      positions: [{
+        name: "Test",
+        iban: "DE02701500000000594937",
+        bic: "Test", // Invalid BIC
+        id: "123",
+        payments: [],
+        requestedExecutionDate: new Date(),
+      }],
+    })
+  ).toThrow("sepaData.positions[0].bic is not valid (Test)");
+});
+```
+</CodeGroup>
+
+## Validation checklist
+
+Before generating SEPA XML:
+
+<Steps>
+  <Step title="Validate IBANs">
+    Ensure all IBANs are valid for their country:
+    - Correct length
+    - Valid checksum
+    - Proper country code
+  </Step>
+  
+  <Step title="Validate BICs">
+    Ensure all BICs are valid or omitted when optional:
+    - 8 or 11 characters
+    - Valid format
+    - Optional for PAIN v03 and direct debits
+  </Step>
+  
+  <Step title="Check field lengths">
+    Ensure no field exceeds maximum length:
+    - IDs: 35 characters
+    - Names: 70 characters
+  </Step>
+  
+  <Step title="Verify required fields">
+    Ensure all required fields are provided:
+    - end2endReference for PAIN v03 credit transfers
+    - mandateId and mandateSignatureDate for direct debits
+  </Step>
+  
+  <Step title="Test with validation enabled">
+    Always test with default validation enabled:
+    ```typescript
+    createSepaXML(data) // Uses default validation
+    ```
+  </Step>
+</Steps>
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Keep validation enabled" icon="shield-check">
+    Always use default validation unless you have a specific reason to disable it.
+  </Card>
+  
+  <Card title="Validate early" icon="clock">
+    Validate IBANs and BICs when collecting user input, not just when generating XML.
+  </Card>
+  
+  <Card title="Handle errors gracefully" icon="circle-exclamation">
+    Wrap XML generation in try-catch and provide user-friendly error messages.
+  </Card>
+  
+  <Card title="Test thoroughly" icon="vial">
+    Test with both valid and invalid data to ensure proper error handling.
+  </Card>
+</CardGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Examples" icon="code" href="/guides/examples">
+    See complete examples with validation
+  </Card>
+  <Card title="Credit transfers" icon="arrow-right" href="/guides/credit-transfers">
+    Learn about credit transfer requirements
+  </Card>
+  <Card title="Direct debits" icon="arrow-left" href="/guides/direct-debits">
+    Learn about direct debit requirements
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/create-sepa-xml">
+    View complete API documentation
+  </Card>
+</CardGroup>

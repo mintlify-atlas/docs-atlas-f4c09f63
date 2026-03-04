@@ -1,0 +1,647 @@
+---
+title: Examples
+description: Real-world examples of SEPA XML generation for credit transfers, direct debits, batch payments, and more
+---
+
+This guide provides complete, real-world examples from the test suite showing how to use Sepa JS XML in various scenarios.
+
+## Basic credit transfer
+
+Simple payment to a single recipient (from index.test.ts:7-53):
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+
+dayjs.extend(utc);
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.02",
+  id: "1",
+  creationDate: dayjs.utc("2022-06-16").toDate(),
+  initiatorName: "Test",
+  positions: [{
+    name: "Test",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    requestedExecutionDate: dayjs.utc("2022-06-16").toDate(),
+    id: "123",
+    payments: [{
+      id: "Payment 1",
+      amount: 123.00,
+      iban: "DE02701500000000594937",
+      bic: "SSKMDEMM",
+      name: "Test",
+      remittanceInformation: "Invoice payment"
+    }]
+  }]
+});
+
+console.log(xml);
+```
+
+<Accordion title="Expected XML output">
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.02" 
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+          xsi:schemaLocation="urn:iso:std:iso:20022:tech:xsd:pain.001.001.02 pain.001.001.02.xsd">
+  <pain.001.001.02>
+    <GrpHdr>
+      <MsgId>1</MsgId>
+      <CreDtTm>2022-06-16T00:00:00</CreDtTm>
+      <BtchBookg>true</BtchBookg>
+      <NbOfTxs>1</NbOfTxs>
+      <CtrlSum>123.00</CtrlSum>
+      <Grpg>MIXD</Grpg>
+      <InitgPty><Nm>Test</Nm></InitgPty>
+    </GrpHdr>
+    <PmtInf>
+      <PmtInfId>123</PmtInfId>
+      <PmtMtd>TRF</PmtMtd>
+      <PmtTpInf><SvcLvl><Cd>SEPA</Cd></SvcLvl></PmtTpInf>
+      <ReqdExctnDt>2022-06-16</ReqdExctnDt>
+      <Dbtr><Nm>Test</Nm></Dbtr>
+      <DbtrAcct><Id><IBAN>DE02701500000000594937</IBAN></Id></DbtrAcct>
+      <DbtrAgt><FinInstnId><BIC>SSKMDEMM</BIC></FinInstnId></DbtrAgt>
+      <ChrgBr>SLEV</ChrgBr>
+      <CdtTrfTxInf>
+        <PmtId><InstrId>Payment 1</InstrId></PmtId>
+        <Amt><InstdAmt Ccy="EUR">123.00</InstdAmt></Amt>
+        <CdtrAgt><FinInstnId><BIC>SSKMDEMM</BIC></FinInstnId></CdtrAgt>
+        <Cdtr><Nm>Test</Nm></Cdtr>
+        <CdtrAcct><Id><IBAN>DE02701500000000594937</IBAN></Id></CdtrAcct>
+        <RmtInf><Ustrd>Invoice payment</Ustrd></RmtInf>
+      </CdtTrfTxInf>
+    </PmtInf>
+  </pain.001.001.02>
+</Document>
+```
+</Accordion>
+
+## Batch credit transfers
+
+Multiple payments in a single file (from index.test.ts:7-53):
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.02",
+  id: "BATCH-2024-03-16",
+  creationDate: new Date("2022-06-16"),
+  initiatorName: "Acme Corporation",
+  positions: [{
+    name: "Acme Corporation",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    requestedExecutionDate: new Date("2022-06-16"),
+    id: "PMT123",
+    payments: [
+      {
+        id: "Payment 1",
+        amount: 123.00,
+        iban: "DE02701500000000594937",
+        bic: "SSKMDEMM",
+        name: "Supplier A",
+        remittanceInformation: "Invoice 001"
+      },
+      {
+        id: "Payment 2",
+        amount: 123.83,
+        iban: "DE02701500000000594937",
+        bic: "SSKMDEMM",
+        name: "Supplier B",
+        remittanceInformation: "Invoice 002"
+      },
+      {
+        id: "Payment 3",
+        amount: 69.00,
+        iban: "DE02701500000000594937",
+        bic: "SSKMDEMM",
+        name: "Supplier C",
+        remittanceInformation: "Invoice 003"
+      }
+    ]
+  }]
+});
+
+console.log(xml);
+// Total control sum: 315.83 EUR across 3 transactions
+```
+
+## Different currencies
+
+Payments in USD instead of EUR (from index.test.ts:55-104):
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.02",
+  id: "USD-BATCH-001",
+  creationDate: new Date("2022-06-16"),
+  initiatorName: "Global Trading Inc",
+  positions: [{
+    name: "Global Trading Inc",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    requestedExecutionDate: new Date("2022-06-16"),
+    id: "USD123",
+    payments: [
+      {
+        id: "Payment 1",
+        amount: 123.00,
+        iban: "DE02701500000000594937",
+        bic: "SSKMDEMM",
+        name: "US Supplier",
+        remittanceInformation: "USD Payment 1",
+        currency: "USD" // Specify currency
+      },
+      {
+        id: "Payment 2",
+        amount: 123.83,
+        iban: "DE02701500000000594937",
+        bic: "SSKMDEMM",
+        name: "US Supplier",
+        remittanceInformation: "USD Payment 2",
+        currency: "USD"
+      },
+      {
+        id: "Payment 3",
+        amount: 69.00,
+        iban: "DE02701500000000594937",
+        bic: "SSKMDEMM",
+        name: "US Supplier",
+        remittanceInformation: "USD Payment 3",
+        currency: "USD"
+      }
+    ]
+  }]
+});
+```
+
+<Warning>
+Most SEPA payments must be in EUR. Check with your bank before using other currencies.
+</Warning>
+
+## PAIN version 03 with optional BIC
+
+Credit transfer without BIC codes (from index.test.ts:357-394):
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03", // Version 03 - BIC optional
+  id: "Test1345",
+  creationDate: new Date("2022-06-16"),
+  initiatorName: "Test Company",
+  positions: [{
+    id: "Test123",
+    batchBooking: false,
+    iban: "DE02701500000000594937",
+    // No BIC provided - OK for version 03
+    requestedExecutionDate: new Date("2022-06-16"),
+    name: "Pos 1",
+    payments: [{
+      id: "123",
+      amount: 230.00,
+      currency: "EUR",
+      name: "Money Company",
+      iban: "DE02701500000000594937",
+      // No BIC provided - OK for version 03
+      remittanceInformation: "Money please",
+      end2endReference: "lol" // Required for version 03
+    }]
+  }]
+}, {
+  checkIBAN: true,
+  checkBIC: true // Still validates if BIC is provided
+});
+```
+
+## Credit transfer with batch booking
+
+Control booking behavior (from index.test.ts:165-204):
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03",
+  id: "Test1345",
+  creationDate: new Date("2022-06-16"),
+  initiatorName: "Test Company",
+  positions: [{
+    id: "Test123",
+    batchBooking: false, // Each payment shows separately on statement
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    requestedExecutionDate: new Date("2022-06-16"),
+    name: "Pos 1",
+    payments: [{
+      id: "123",
+      amount: 230.00,
+      currency: "EUR",
+      bic: "COBADEFFXXX",
+      name: "Money Company",
+      iban: "DE02701500000000594937",
+      remittanceInformation: "Money please",
+      end2endReference: "REF123"
+    }]
+  }]
+}, {
+  checkIBAN: false, // Disable IBAN validation for testing
+  checkBIC: false   // Disable BIC validation for testing
+});
+```
+
+## Disabling validation
+
+For testing with dummy data (from index.test.ts:165-204):
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03",
+  id: "Test1345",
+  creationDate: new Date("2022-06-16"),
+  initiatorName: "Test Company",
+  positions: [{
+    id: "Test123",
+    batchBooking: false,
+    iban: "DE02701500000000594937",
+    bic: "Test", // Invalid BIC
+    requestedExecutionDate: new Date("2022-06-16"),
+    name: "Pos 1",
+    payments: [{
+      id: "123",
+      amount: 230.00,
+      currency: "EUR",
+      bic: "Test", // Invalid BIC
+      name: "Money Company",
+      iban: "DE02701500000000594937",
+      remittanceInformation: "Money please",
+      end2endReference: "lol"
+    }]
+  }]
+}, {
+  checkIBAN: false, // Skip IBAN validation
+  checkBIC: false   // Skip BIC validation
+});
+
+// Success - validation disabled
+```
+
+<Warning>
+Only disable validation for testing. Always use validation in production.
+</Warning>
+
+## Pretty-printed XML
+
+Generate formatted XML for readability:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03",
+  id: "MSG001",
+  creationDate: new Date(),
+  initiatorName: "My Company",
+  positions: [{
+    id: "PMT001",
+    name: "My Company",
+    iban: "DE02701500000000594937",
+    requestedExecutionDate: new Date(),
+    payments: [{
+      id: "TXN001",
+      name: "Supplier",
+      iban: "DE89370400440532013000",
+      amount: 100.00,
+      remittanceInformation: "Payment",
+      end2endReference: "REF001"
+    }]
+  }]
+}, {
+  prettyPrint: true // Enable formatting
+});
+
+console.log(xml);
+// Output is formatted with 2-space indentation
+```
+
+## Payroll payments
+
+Pay multiple employees:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const payrollDate = new Date("2024-03-31");
+const employees = [
+  { id: "EMP001", name: "Alice Johnson", iban: "DE89370400440532013000", salary: 3500.00 },
+  { id: "EMP002", name: "Bob Smith", iban: "DE89370400440532013001", salary: 4200.00 },
+  { id: "EMP003", name: "Carol White", iban: "DE89370400440532013002", salary: 3800.00 },
+  { id: "EMP004", name: "David Brown", iban: "DE89370400440532013003", salary: 5000.00 }
+];
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03",
+  id: "PAYROLL-2024-03",
+  creationDate: new Date(),
+  initiatorName: "Acme Corporation Ltd",
+  positions: [{
+    id: "PAYROLL-001",
+    name: "Acme Corporation Ltd",
+    iban: "DE02701500000000594937",
+    batchBooking: false,
+    requestedExecutionDate: payrollDate,
+    payments: employees.map(emp => ({
+      id: emp.id,
+      name: emp.name,
+      iban: emp.iban,
+      amount: emp.salary,
+      currency: "EUR",
+      remittanceInformation: `Salary March 2024 - ${emp.name}`,
+      end2endReference: `${emp.id}-2024-03`
+    }))
+  }]
+}, {
+  prettyPrint: true
+});
+
+console.log(xml);
+// Total: 16,500.00 EUR for 4 employees
+```
+
+## Recurring subscription collections
+
+Direct debit for monthly subscriptions:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+// Calculate collection date (5 business days from now)
+const collectionDate = new Date();
+collectionDate.setDate(collectionDate.getDate() + 5);
+
+const subscribers = [
+  {
+    id: "CUST001",
+    name: "John Doe",
+    iban: "DE89370400440532013000",
+    plan: "Premium",
+    amount: 29.99,
+    mandateId: "MANDT-001",
+    mandateDate: new Date("2024-01-15")
+  },
+  {
+    id: "CUST002",
+    name: "Jane Smith",
+    iban: "DE89370400440532013001",
+    plan: "Basic",
+    amount: 19.99,
+    mandateId: "MANDT-002",
+    mandateDate: new Date("2024-02-01")
+  },
+  {
+    id: "CUST003",
+    name: "Bob Wilson",
+    iban: "DE89370400440532013002",
+    plan: "Premium",
+    amount: 29.99,
+    mandateId: "MANDT-003",
+    mandateDate: new Date("2024-01-20")
+  }
+];
+
+const xml = createSepaXML({
+  painVersion: "pain.008.001.02",
+  id: "SUBS-2024-03",
+  creationDate: new Date(),
+  initiatorName: "Streaming Service Inc",
+  localInstrumentation: "CORE",
+  sequenceType: "RCUR", // Recurring collection
+  positions: [{
+    id: "DE98ZZZ09999999999", // Your creditor ID
+    name: "Streaming Service Inc",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    collectionDate: collectionDate,
+    requestedExecutionDate: new Date(),
+    payments: subscribers.map(sub => ({
+      id: `${sub.id}-2024-03`,
+      name: sub.name,
+      iban: sub.iban,
+      amount: sub.amount,
+      currency: "EUR",
+      remittanceInformation: `${sub.plan} Plan - March 2024`,
+      mandateId: sub.mandateId,
+      mandateSignatureDate: sub.mandateDate
+    }))
+  }]
+}, {
+  prettyPrint: true
+});
+
+console.log(xml);
+// Total: 79.97 EUR from 3 subscribers
+```
+
+## First-time direct debit collection
+
+One-off collection with OOFF sequence type:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+// 5 business days lead time for OOFF
+const collectionDate = new Date();
+collectionDate.setDate(collectionDate.getDate() + 5);
+
+const xml = createSepaXML({
+  painVersion: "pain.008.001.02",
+  id: "INVOICE-2024-001",
+  creationDate: new Date(),
+  initiatorName: "Consulting Services GmbH",
+  localInstrumentation: "CORE",
+  sequenceType: "OOFF", // One-off collection
+  positions: [{
+    id: "DE98ZZZ09999999999",
+    name: "Consulting Services GmbH",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    collectionDate: collectionDate,
+    requestedExecutionDate: new Date(),
+    payments: [{
+      id: "INV-2024-001",
+      name: "ABC Corporation",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      amount: 5000.00,
+      currency: "EUR",
+      remittanceInformation: "Consulting Services - Invoice INV-2024-001",
+      mandateId: "MANDT-ABC-2024",
+      mandateSignatureDate: new Date("2024-03-01")
+    }]
+  }]
+});
+
+console.log(xml);
+```
+
+## B2B direct debit
+
+Business-to-business collection:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+// 1 business day lead time for B2B
+const collectionDate = new Date();
+collectionDate.setDate(collectionDate.getDate() + 1);
+
+const xml = createSepaXML({
+  painVersion: "pain.008.001.02",
+  id: "B2B-2024-03",
+  creationDate: new Date(),
+  initiatorName: "Supplier Industries Ltd",
+  localInstrumentation: "B2B", // Business-to-business
+  sequenceType: "RCUR",
+  positions: [{
+    id: "DE98ZZZ09999999999",
+    name: "Supplier Industries Ltd",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    collectionDate: collectionDate,
+    requestedExecutionDate: new Date(),
+    payments: [{
+      id: "B2B-001",
+      name: "Manufacturing Corp GmbH",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      amount: 15000.00,
+      currency: "EUR",
+      remittanceInformation: "Monthly raw materials - March 2024",
+      mandateId: "MANDT-B2B-001",
+      mandateSignatureDate: new Date("2024-01-01")
+    }]
+  }]
+});
+
+console.log(xml);
+```
+
+<Note>
+B2B direct debits have no refund rights for the debtor. Use only for business-to-business transactions.
+</Note>
+
+## Complete production example
+
+Full-featured example with error handling:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+import fs from 'fs';
+
+interface PaymentRequest {
+  recipientName: string;
+  recipientIban: string;
+  recipientBic?: string;
+  amount: number;
+  reference: string;
+}
+
+function generateSepaFile(
+  payments: PaymentRequest[],
+  outputPath: string
+): void {
+  try {
+    // Calculate execution date (tomorrow)
+    const executionDate = new Date();
+    executionDate.setDate(executionDate.getDate() + 1);
+    
+    // Generate unique message ID
+    const messageId = `MSG-${Date.now()}`;
+    
+    const xml = createSepaXML({
+      painVersion: "pain.001.001.03",
+      id: messageId,
+      creationDate: new Date(),
+      initiatorName: "My Company Ltd",
+      positions: [{
+        id: `BATCH-${Date.now()}`,
+        name: "My Company Ltd",
+        iban: "DE02701500000000594937",
+        batchBooking: false,
+        requestedExecutionDate: executionDate,
+        payments: payments.map((payment, index) => ({
+          id: `TXN-${index + 1}`,
+          name: payment.recipientName,
+          iban: payment.recipientIban,
+          bic: payment.recipientBic,
+          amount: payment.amount,
+          currency: "EUR",
+          remittanceInformation: payment.reference,
+          end2endReference: `E2E-${Date.now()}-${index + 1}`
+        }))
+      }]
+    }, {
+      prettyPrint: true,
+      checkIBAN: true,
+      checkBIC: true
+    });
+    
+    // Write to file
+    fs.writeFileSync(outputPath, xml, 'utf-8');
+    
+    console.log(`✓ SEPA XML file created: ${outputPath}`);
+    console.log(`✓ Message ID: ${messageId}`);
+    console.log(`✓ Payments: ${payments.length}`);
+    console.log(`✓ Total amount: ${payments.reduce((sum, p) => sum + p.amount, 0).toFixed(2)} EUR`);
+    
+  } catch (error) {
+    console.error('✗ Failed to generate SEPA XML:', error.message);
+    throw error;
+  }
+}
+
+// Usage
+const payments: PaymentRequest[] = [
+  {
+    recipientName: "Supplier A GmbH",
+    recipientIban: "DE89370400440532013000",
+    amount: 1250.50,
+    reference: "Invoice 2024-001"
+  },
+  {
+    recipientName: "Supplier B Ltd",
+    recipientIban: "DE89370400440532013001",
+    amount: 3500.00,
+    reference: "Invoice 2024-002"
+  }
+];
+
+generateSepaFile(payments, './sepa-payment.xml');
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Credit transfers" icon="arrow-right" href="/guides/credit-transfers">
+    Learn about credit transfer features
+  </Card>
+  <Card title="Direct debits" icon="arrow-left" href="/guides/direct-debits">
+    Learn about direct debit features
+  </Card>
+  <Card title="Validation" icon="shield-check" href="/guides/validation">
+    Understand validation and error handling
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/create-sepa-xml">
+    View complete API documentation
+  </Card>
+</CardGroup>

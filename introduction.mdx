@@ -1,0 +1,62 @@
+---
+title: Introduction
+description: Generate SEPA XML files for credit transfers and direct debits in JavaScript and TypeScript
+---
+
+Sepa JS XML is a lightweight JavaScript library that generates SEPA-compliant XML files for electronic payments in the Single Euro Payments Area (SEPA). You can use it to create XML files for credit transfers and direct debits that comply with ISO 20022 standards.
+
+## What is SEPA?
+
+SEPA (Single Euro Payments Area) is a payment integration initiative that makes electronic payments across Europe as easy as domestic payments. SEPA credit transfers and direct debits use standardized XML formats based on the ISO 20022 standard, which defines message formats for financial transactions.
+
+## Key features
+
+Sepa JS XML provides a simple API to generate SEPA XML files with the following features:
+
+- **Multiple PAIN versions**: Support for various PAIN (Payment Initiation) message formats including credit transfers (pain.001) and direct debits (pain.008)
+- **TypeScript support**: Full type definitions for better development experience and type safety
+- **Built-in validation**: Automatic IBAN and BIC validation using the ibantools library
+- **Batch payments**: Group multiple payments under a single creditor position
+- **Flexible configuration**: Options for pretty printing, validation settings, and custom SEPA parameters
+- **Zero dependencies**: Lightweight with minimal dependencies (xml-js and ibantools)
+
+## Supported PAIN versions
+
+You can generate XML files for the following SEPA payment schemes:
+
+**Credit transfers (pain.001)**:
+- `pain.001.001.02`
+- `pain.001.003.02`
+- `pain.001.001.03` (default)
+- `pain.001.003.03`
+
+**Direct debits (pain.008)**:
+- `pain.008.001.01`
+- `pain.008.003.01`
+- `pain.008.001.02`
+- `pain.008.003.02`
+
+## Use cases
+
+You can use Sepa JS XML in various scenarios:
+
+- **Payment processing**: Generate SEPA XML files for bulk payment uploads to banking systems
+- **Financial applications**: Integrate SEPA payment functionality into web or Node.js applications
+- **Invoice automation**: Automate payment collection through SEPA direct debits
+- **Payroll systems**: Generate credit transfer files for employee salary payments
+- **E-commerce platforms**: Process refunds and payouts via SEPA transfers
+
+<Note>
+This library has not been tested 100%. If you find a problem, please report it on the [GitHub repository](https://github.com/jerebtw/Sepa-JS-XML).
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the library via npm, yarn, pnpm, or bun
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Generate your first SEPA XML file in minutes
+  </Card>
+</CardGroup>

@@ -1,0 +1,94 @@
+---
+title: Installation
+description: Install Sepa JS XML in your JavaScript or TypeScript project
+---
+
+You can install Sepa JS XML using your preferred package manager.
+
+## Install the package
+
+<CodeGroup>
+
+```bash npm
+npm install sepa-js-xml
+```
+
+```bash yarn
+yarn add sepa-js-xml
+```
+
+```bash pnpm
+pnpm add sepa-js-xml
+```
+
+```bash bun
+bun add sepa-js-xml
+```
+
+</CodeGroup>
+
+## Dependencies
+
+Sepa JS XML includes the following dependencies:
+
+- **xml-js**: Converts JavaScript objects to XML format
+- **ibantools**: Validates IBAN and BIC codes
+
+These are automatically installed when you install the package. There are no peer dependencies required.
+
+## TypeScript setup
+
+Sepa JS XML is written in TypeScript and includes full type definitions. If you're using TypeScript, you don't need to install any additional type packages.
+
+### Type definitions
+
+The library exports all the types you need:
+
+```typescript
+import { 
+  createSepaXML, 
+  type SepaData, 
+  type Payment, 
+  type CreditorPayments,
+  type Options,
+  type PAIN_VERSIONS,
+  type LOCAL_INSTRUMENTATION,
+  type SEQUENCE_TYPE
+} from 'sepa-js-xml';
+```
+
+### TypeScript configuration
+
+Make sure your `tsconfig.json` includes ES module support:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true
+  }
+}
+```
+
+<Note>
+The package uses ES modules (`"type": "module"` in package.json). If you're using CommonJS, you may need to adjust your configuration or use dynamic imports.
+</Note>
+
+## Verify installation
+
+You can verify the installation by importing the library:
+
+```javascript
+import { createSepaXML } from 'sepa-js-xml';
+
+console.log(typeof createSepaXML); // "function"
+```
+
+If the import works without errors, you're ready to start generating SEPA XML files.
+
+## Next steps
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Learn how to generate your first SEPA XML file
+</Card>

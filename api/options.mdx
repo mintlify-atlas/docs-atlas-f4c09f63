@@ -1,0 +1,227 @@
+---
+title: 'Options'
+description: 'Configuration options for SEPA XML generation'
+---
+
+The `Options` interface allows you to customize the behavior of the `createSepaXML` function. These options control XML formatting and validation rules.
+
+## Interface Definition
+
+<ParamField path="prettyPrint" type="boolean" optional>
+  Controls whether the generated XML should be formatted with indentation and line breaks for human readability.
+  
+  - `true` - XML is formatted with 2-space indentation
+  - `false` - XML is generated as a single line (minified)
+  
+  **Default:** `false`
+  
+  **Note:** Pretty-printed XML is easier to read but results in larger file sizes.
+</ParamField>
+
+<ParamField path="checkIBAN" type="boolean" optional>
+  Controls whether IBAN validation should be performed on all IBAN fields.
+  
+  - `true` - Validates IBANs using the IBANTools library
+  - `false` - Skips IBAN validation
+  
+  **Default:** `true`
+  
+  **When to disable:** Use `false` for testing with dummy IBANs or when you've already validated IBANs in your application.
+  
+  **Validation performed:**
+  - IBAN format check
+  - Check digit verification
+  - Country-specific format validation
+</ParamField>
+
+<ParamField path="checkBIC" type="boolean" optional>
+  Controls whether BIC (Bank Identifier Code) validation should be performed on all BIC fields.
+  
+  - `true` - Validates BICs using the IBANTools library
+  - `false` - Skips BIC validation
+  
+  **Default:** `true`
+  
+  **When to disable:** Use `false` for testing with dummy BICs or when you've already validated BICs in your application.
+  
+  **Validation performed:**
+  - BIC format check (8 or 11 characters)
+  - Structure validation
+</ParamField>
+
+## Usage
+
+### Default Options
+
+If no options are provided, the function uses these defaults:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML(sepaData);
+// Equivalent to:
+const xml = createSepaXML(sepaData, {
+  prettyPrint: false,
+  checkIBAN: true,
+  checkBIC: true,
+});
+```
+
+### Pretty-Printed XML
+
+```typescript
+const xml = createSepaXML(sepaData, {
+  prettyPrint: true,
+});
+```
+
+Output:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03">
+  <CstmrCdtTrfInitn>
+    <GrpHdr>
+      <MsgId>Test1345</MsgId>
+      <CreDtTm>2022-06-16T00:00:00</CreDtTm>
+      <!-- ... -->
+    </GrpHdr>
+  </CstmrCdtTrfInitn>
+</Document>
+```
+
+### Disable Validation for Testing
+
+```typescript
+const xml = createSepaXML(sepaData, {
+  checkIBAN: false,
+  checkBIC: false,
+});
+```
+
+This is useful when working with test data that may not have valid IBANs or BICs.
+
+### Example: Testing with Invalid Data
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+import dayjs from 'dayjs';
+
+const testData = {
+  painVersion: 'pain.001.001.03',
+  id: 'Test1345',
+  creationDate: dayjs.utc('2022-06-16').toDate(),
+  initiatorName: 'Test Company',
+  positions: [
+    {
+      id: 'Test123',
+      iban: 'DE02701500000000594937',
+      bic: 'Test', // Invalid BIC format
+      requestedExecutionDate: dayjs.utc('2022-06-16').toDate(),
+      name: 'Pos 1',
+      payments: [
+        {
+          id: '123',
+          amount: 230,
+          name: 'Money Company',
+          iban: 'DE02701500000000594937',
+          bic: 'Test',
+          remittanceInformation: 'Money please',
+          end2endReference: 'lol',
+        },
+      ],
+    },
+  ],
+};
+
+// This would throw an error with default options
+// const xml = createSepaXML(testData);
+
+// But works with validation disabled
+const xml = createSepaXML(testData, {
+  checkIBAN: false,
+  checkBIC: false,
+});
+```
+
+## Validation Errors
+
+When validation is enabled, the library throws errors for invalid data:
+
+### Invalid IBAN
+
+```typescript
+try {
+  createSepaXML({
+    id: 'Test',
+    creationDate: new Date(),
+    initiatorName: 'Test',
+    positions: [
+      {
+        name: 'Test',
+        iban: 'INVALID-IBAN',
+        bic: 'SSKMDEMM',
+        id: '123',
+        payments: [],
+        requestedExecutionDate: new Date(),
+      },
+    ],
+  });
+} catch (error) {
+  // Error: sepaData.positions[0].iban is not valid (INVALID-IBAN)
+}
+```
+
+### Invalid BIC
+
+```typescript
+try {
+  createSepaXML({
+    id: 'Test',
+    creationDate: new Date(),
+    initiatorName: 'Test',
+    positions: [
+      {
+        name: 'Test',
+        iban: 'DE02701500000000594937',
+        bic: 'INVALID',
+        id: '123',
+        payments: [],
+        requestedExecutionDate: new Date(),
+      },
+    ],
+  });
+} catch (error) {
+  // Error: sepaData.positions[0].bic is not valid (INVALID)
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Production Use">
+    Keep validation enabled (`checkIBAN: true`, `checkBIC: true`) to catch errors early and ensure generated XML files are valid.
+  </Accordion>
+  
+  <Accordion title="Testing and Development">
+    Disable validation (`checkIBAN: false`, `checkBIC: false`) when working with mock data or testing edge cases.
+  </Accordion>
+  
+  <Accordion title="File Size Optimization">
+    Use `prettyPrint: false` (default) for production to minimize file size. Only use `prettyPrint: true` when debugging or when human readability is required.
+  </Accordion>
+  
+  <Accordion title="Validation Performance">
+    If you've already validated IBANs and BICs in your application layer, you can safely disable checks to improve performance, especially when generating large batches of XML files.
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="createSepaXML" icon="code" href="/api/create-sepa-xml">
+    Main function documentation
+  </Card>
+  <Card title="SepaData" icon="file-lines" href="/api/sepa-data">
+    Main data structure
+  </Card>
+</CardGroup>

@@ -1,0 +1,157 @@
+---
+title: 'SepaData'
+description: 'Main data structure for SEPA XML generation'
+---
+
+The `SepaData` interface is the primary input for generating SEPA XML files. It contains all the information needed to create a valid SEPA credit transfer or direct debit XML document.
+
+## Interface Definition
+
+<ParamField path="painVersion" type="PAIN_VERSIONS" optional>
+  The SEPA pain format version to use.
+  
+  **Valid values:**
+  - `pain.001.001.02` - Credit Transfer v02
+  - `pain.001.003.02` - Credit Transfer v02 (alternative)
+  - `pain.001.001.03` - Credit Transfer v03
+  - `pain.001.003.03` - Credit Transfer v03 (alternative)
+  - `pain.008.001.01` - Direct Debit v01
+  - `pain.008.003.01` - Direct Debit v01 (alternative)
+  - `pain.008.001.02` - Direct Debit v02
+  - `pain.008.003.02` - Direct Debit v02 (alternative)
+  
+  **Default:** `pain.001.001.03`
+</ParamField>
+
+<ParamField path="xmlVersion" type="string" optional>
+  The XML version to use in the declaration.
+  
+  **Default:** `1.0`
+</ParamField>
+
+<ParamField path="xmlEncoding" type="string" optional>
+  The XML encoding to use in the declaration.
+  
+  **Default:** `UTF-8`
+</ParamField>
+
+<ParamField path="xsiNamespace" type="string" optional>
+  The XSI namespace URL for the XML schema instance.
+  
+  **Default:** `http://www.w3.org/2001/XMLSchema-instance`
+</ParamField>
+
+<ParamField path="xsiXmls" type="string" optional>
+  The base URL for the ISO 20022 XML schema.
+  
+  **Default:** `urn:iso:std:iso:20022:tech:xsd:`
+</ParamField>
+
+<ParamField path="localInstrumentation" type="LOCAL_INSTRUMENTATION" optional>
+  The local instrument code for direct debit transactions.
+  
+  **Valid values:**
+  - `CORE` - SEPA Core Direct Debit
+  - `COR1` - SEPA Core Direct Debit with 1-day lead time
+  - `B2B` - SEPA Business-to-Business Direct Debit
+  
+  Only applicable for direct debit (pain.008.x) formats.
+</ParamField>
+
+<ParamField path="sequenceType" type="SEQUENCE_TYPE" optional>
+  The sequence type for direct debit transactions.
+  
+  **Valid values:**
+  - `FRST` - First direct debit in a series
+  - `RCUR` - Recurring direct debit
+  - `OOFF` - One-off direct debit
+  - `FNAL` - Final direct debit in a series
+  
+  Only applicable for direct debit (pain.008.x) formats.
+</ParamField>
+
+<ParamField path="batchBooking" type="boolean" optional>
+  Whether to use batch booking for all payment information blocks.
+  
+  **Default:** `true`
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The unique message identification for the SEPA XML file.
+  
+  **Constraints:**
+  - Maximum length: 35 characters
+  - Must be unique
+</ParamField>
+
+<ParamField path="creationDate" type="Date" required>
+  The date and time when the SEPA XML is created.
+  
+  Will be formatted as ISO 8601 (YYYY-MM-DDThh:mm:ss) in the output XML.
+</ParamField>
+
+<ParamField path="initiatorName" type="string" required>
+  The name of the party initiating the payment.
+  
+  **Constraints:**
+  - Minimum length: 1 character
+  - Maximum length: 70 characters
+</ParamField>
+
+<ParamField path="positions" type="CreditorPayments[]" required>
+  An array of creditor payment information blocks. Each position represents a group of payments from/to a single creditor/debtor account.
+  
+  See [CreditorPayments](/api/creditor-payments) for the structure of each position.
+</ParamField>
+
+## Example
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+import dayjs from 'dayjs';
+
+const sepaData = {
+  painVersion: 'pain.001.001.03',
+  id: 'Test1345',
+  creationDate: dayjs.utc('2022-06-16').toDate(),
+  initiatorName: 'Test Company',
+  positions: [
+    {
+      id: 'Test123',
+      batchBooking: false,
+      iban: 'DE02701500000000594937',
+      bic: 'SSKMDEMM',
+      requestedExecutionDate: dayjs.utc('2022-06-16').toDate(),
+      name: 'Pos 1',
+      payments: [
+        {
+          id: '123',
+          amount: 230,
+          currency: 'EUR',
+          name: 'Money Company',
+          iban: 'DE02701500000000594937',
+          bic: 'SSKMDEMM',
+          remittanceInformation: 'Money please',
+          end2endReference: 'lol',
+        },
+      ],
+    },
+  ],
+};
+
+const xml = createSepaXML(sepaData);
+```
+
+## Related Types
+
+<CardGroup cols={2}>
+  <Card title="CreditorPayments" icon="building-columns" href="/api/creditor-payments">
+    Payment information block structure
+  </Card>
+  <Card title="Payment" icon="credit-card" href="/api/payment">
+    Individual payment transaction details
+  </Card>
+  <Card title="Options" icon="gear" href="/api/options">
+    XML generation options
+  </Card>
+</CardGroup>

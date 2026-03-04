@@ -1,0 +1,464 @@
+---
+title: Direct debits
+description: Complete guide to creating SEPA direct debit payments with mandate information and sequence types
+---
+
+Direct debits allow you to collect money from customer accounts. This guide covers mandates, sequence types, collection dates, and all aspects of creating direct debit XML files.
+
+## Basic direct debit
+
+Here's a simple example of creating a direct debit:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.008.001.02",
+  id: "MSG001",
+  creationDate: new Date(),
+  initiatorName: "My Company",
+  localInstrumentation: "CORE",
+  sequenceType: "RCUR",
+  
+  positions: [{
+    id: "DD001",
+    name: "My Company",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    collectionDate: new Date("2024-03-20"),
+    requestedExecutionDate: new Date(),
+    
+    payments: [{
+      id: "TXN001",
+      name: "Customer A",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      amount: 29.99,
+      remittanceInformation: "Monthly subscription - March 2024",
+      mandateId: "MANDATE-001",
+      mandateSignatureDate: new Date("2024-01-15")
+    }]
+  }]
+});
+```
+
+## Required fields
+
+### Document level
+
+<ParamField path="painVersion" type="string" required>
+  The PAIN format version. Use `pain.008.001.01`, `pain.008.003.01`, `pain.008.001.02`, or `pain.008.003.02` for direct debits.
+</ParamField>
+
+<ParamField path="localInstrumentation" type="CORE | COR1 | B2B" required>
+  The SEPA direct debit scheme type.
+</ParamField>
+
+<ParamField path="sequenceType" type="FRST | RCUR | OOFF | FNAL" required>
+  The sequence type of the direct debit.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  Unique message identifier. Maximum length: 35 characters.
+</ParamField>
+
+<ParamField path="creationDate" type="Date" required>
+  When the payment file was created.
+</ParamField>
+
+<ParamField path="initiatorName" type="string" required>
+  Name of the creditor initiating the collection. Maximum length: 70 characters.
+</ParamField>
+
+### Position level (creditor)
+
+<ParamField path="positions[].id" type="string" required>
+  Unique payment information identifier. Maximum length: 35 characters.
+</ParamField>
+
+<ParamField path="positions[].name" type="string" required>
+  Creditor name (your company). Maximum length: 70 characters.
+</ParamField>
+
+<ParamField path="positions[].iban" type="string" required>
+  Creditor IBAN (your account).
+</ParamField>
+
+<ParamField path="positions[].bic" type="string">
+  Creditor BIC.
+</ParamField>
+
+<ParamField path="positions[].collectionDate" type="Date" required>
+  When you want to collect the payment from customer accounts.
+</ParamField>
+
+### Payment level (debtor)
+
+<ParamField path="payments[].id" type="string" required>
+  Unique transaction identifier. Maximum length: 35 characters.
+</ParamField>
+
+<ParamField path="payments[].name" type="string" required>
+  Debtor name (customer). Maximum length: 70 characters.
+</ParamField>
+
+<ParamField path="payments[].iban" type="string" required>
+  Debtor IBAN (customer account).
+</ParamField>
+
+<ParamField path="payments[].bic" type="string">
+  Debtor BIC.
+</ParamField>
+
+<ParamField path="payments[].amount" type="number" required>
+  Amount to collect in the specified currency.
+</ParamField>
+
+<ParamField path="payments[].remittanceInformation" type="string" required>
+  Payment description or reference information.
+</ParamField>
+
+<ParamField path="payments[].mandateId" type="string" required>
+  Unique mandate reference identifier.
+</ParamField>
+
+<ParamField path="payments[].mandateSignatureDate" type="Date" required>
+  Date when the customer signed the mandate.
+</ParamField>
+
+## Local instrumentation
+
+The `localInstrumentation` field specifies the SEPA direct debit scheme (from index.ts:119):
+
+<Tabs>
+  <Tab title="CORE">
+    **SEPA Core Direct Debit**
+    
+    ```typescript
+    localInstrumentation: "CORE"
+    ```
+    
+    - For consumer and business payments
+    - Most common scheme type
+    - 5 business days lead time for first collection
+    - 2 business days for recurring collections
+  </Tab>
+  
+  <Tab title="COR1">
+    **SEPA Core Direct Debit (1-day)** - Deprecated
+    
+    ```typescript
+    localInstrumentation: "COR1"
+    ```
+    
+    - Faster processing (1 business day)
+    - Now merged with CORE scheme
+    - Use CORE for new implementations
+  </Tab>
+  
+  <Tab title="B2B">
+    **SEPA Business-to-Business Direct Debit**
+    
+    ```typescript
+    localInstrumentation: "B2B"
+    ```
+    
+    - Only for business-to-business payments
+    - No refund rights for debtor
+    - Requires pre-notification
+    - 1 business day lead time
+  </Tab>
+</Tabs>
+
+<Note>
+From the source code (index.ts:249-251), the local instrumentation is added to the payment type information structure in the XML output.
+</Note>
+
+## Sequence types
+
+The `sequenceType` field indicates the position of the collection in a series (from index.ts:120):
+
+<Accordion title="FRST - First">
+  Use for the **first** direct debit in a series of recurring payments:
+  
+  ```typescript
+  sequenceType: "FRST"
+  ```
+  
+  - Requires 5 business days lead time (CORE)
+  - Requires valid mandate
+  - Longer processing time than recurring
+</Accordion>
+
+<Accordion title="RCUR - Recurring">
+  Use for **subsequent** direct debits in a series:
+  
+  ```typescript
+  sequenceType: "RCUR"
+  ```
+  
+  - Requires 2 business days lead time (CORE)
+  - Must have had at least one FRST collection
+  - Most efficient for subscriptions
+</Accordion>
+
+<Accordion title="OOFF - One-off">
+  Use for **single** direct debits:
+  
+  ```typescript
+  sequenceType: "OOFF"
+  ```
+  
+  - Requires 5 business days lead time (CORE)
+  - No follow-up collections expected
+  - Good for one-time payments
+</Accordion>
+
+<Accordion title="FNAL - Final">
+  Use for the **last** direct debit in a series:
+  
+  ```typescript
+  sequenceType: "FNAL"
+  ```
+  
+  - Requires 2 business days lead time (CORE)
+  - Closes the mandate sequence
+  - Use when ending a subscription
+</Accordion>
+
+<Note>
+From the source code (index.ts:252), the sequence type is added to the payment information structure in the XML output.
+</Note>
+
+## Collection dates
+
+The `collectionDate` determines when money is collected from customer accounts:
+
+```typescript
+const collectionDate = new Date();
+collectionDate.setDate(collectionDate.getDate() + 5); // 5 days from now
+
+const xml = createSepaXML({
+  painVersion: "pain.008.001.02",
+  localInstrumentation: "CORE",
+  sequenceType: "FRST",
+  // ... other fields
+  positions: [{
+    // ... other fields
+    collectionDate: collectionDate, // When to collect
+    payments: [/* ... */]
+  }]
+});
+```
+
+<Warning>
+**Lead time requirements:**
+- CORE FRST/OOFF: 5 business days
+- CORE RCUR/FNAL: 2 business days
+- B2B: 1 business day
+
+Submit your file to the bank before these deadlines!
+</Warning>
+
+## Mandate information
+
+Every direct debit requires mandate information from the customer:
+
+```typescript
+payments: [{
+  id: "TXN001",
+  name: "Customer Name",
+  iban: "DE89370400440532013000",
+  amount: 49.99,
+  remittanceInformation: "Subscription fee",
+  
+  // Mandate information (required)
+  mandateId: "MANDT-2024-001",
+  mandateSignatureDate: new Date("2024-01-15")
+}]
+```
+
+<Accordion title="What is a mandate?">
+  A mandate is a written authorization from the customer allowing you to collect payments from their account.
+  
+  **Required information:**
+  - Unique mandate identifier
+  - Customer signature
+  - Date of signature
+  - Creditor identifier
+  
+  **Customer rights:**
+  - Can cancel mandate at any time
+  - Can request refund within 8 weeks (CORE)
+  - No refund rights for B2B
+</Accordion>
+
+<Note>
+From the source code (index.ts:349-355), mandate information is included in the DirectDebitTransaction structure in the XML output.
+</Note>
+
+## Multiple collections
+
+Collect from multiple customers in a single file:
+
+```typescript
+const xml = createSepaXML({
+  painVersion: "pain.008.001.02",
+  id: "MSG001",
+  creationDate: new Date(),
+  initiatorName: "Subscription Service Ltd",
+  localInstrumentation: "CORE",
+  sequenceType: "RCUR",
+  
+  positions: [{
+    id: "SUBS-MARCH-2024",
+    name: "Subscription Service Ltd",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    collectionDate: new Date("2024-03-20"),
+    requestedExecutionDate: new Date(),
+    
+    payments: [
+      {
+        id: "CUST001",
+        name: "John Smith",
+        iban: "DE89370400440532013000",
+        bic: "COBADEFFXXX",
+        amount: 29.99,
+        remittanceInformation: "Premium Plan - March 2024",
+        mandateId: "MANDT-2024-001",
+        mandateSignatureDate: new Date("2024-01-15")
+      },
+      {
+        id: "CUST002",
+        name: "Jane Doe",
+        iban: "DE89370400440532013001",
+        bic: "COBADEFFXXX",
+        amount: 19.99,
+        remittanceInformation: "Basic Plan - March 2024",
+        mandateId: "MANDT-2024-002",
+        mandateSignatureDate: new Date("2024-02-01")
+      },
+      {
+        id: "CUST003",
+        name: "Bob Johnson",
+        iban: "DE89370400440532013002",
+        bic: "COBADEFFXXX",
+        amount: 49.99,
+        remittanceInformation: "Enterprise Plan - March 2024",
+        mandateId: "MANDT-2024-003",
+        mandateSignatureDate: new Date("2024-01-20")
+      }
+    ]
+  }]
+});
+```
+
+## Creditor scheme ID
+
+From the source code (index.ts:266-277), the creditor scheme ID is automatically generated from the position ID:
+
+```typescript
+positions: [{
+  id: "DE98ZZZ09999999999", // This becomes your creditor ID
+  // ... other fields
+}]
+```
+
+The creditor scheme ID structure in the XML:
+```xml
+<CdtrSchmeId>
+  <Id>
+    <PrvtId>
+      <Othr>
+        <Id>DE98ZZZ09999999999</Id>
+        <SchmeNm>
+          <Prtry>SEPA</Prtry>
+        </SchmeNm>
+      </Othr>
+    </PrvtId>
+  </Id>
+</CdtrSchmeId>
+```
+
+<Note>
+You must obtain a valid creditor identifier from your national bank association before using direct debits. In Germany, apply through the Bundesbank.
+</Note>
+
+## Recurring subscriptions example
+
+Here's a complete example for monthly recurring subscriptions:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+// Calculate next collection date (5 days from now)
+const collectionDate = new Date();
+collectionDate.setDate(collectionDate.getDate() + 5);
+
+const xml = createSepaXML({
+  painVersion: "pain.008.001.02",
+  id: "MONTHLY-2024-03",
+  creationDate: new Date(),
+  initiatorName: "Streaming Service Inc",
+  localInstrumentation: "CORE",
+  sequenceType: "RCUR", // Recurring collection
+  
+  positions: [{
+    id: "DE98ZZZ09999999999", // Your creditor ID
+    name: "Streaming Service Inc",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    collectionDate: collectionDate,
+    requestedExecutionDate: new Date(),
+    
+    payments: [
+      {
+        id: "SUB-001-2024-03",
+        name: "Alice Cooper",
+        iban: "DE89370400440532013000",
+        bic: "COBADEFFXXX",
+        amount: 9.99,
+        currency: "EUR",
+        remittanceInformation: "Streaming subscription - March 2024",
+        mandateId: "MANDT-ALICE-2024",
+        mandateSignatureDate: new Date("2024-01-05")
+      },
+      {
+        id: "SUB-002-2024-03",
+        name: "Bob Dylan",
+        iban: "DE89370400440532013001",
+        bic: "COBADEFFXXX",
+        amount: 14.99,
+        currency: "EUR",
+        remittanceInformation: "Streaming Premium - March 2024",
+        mandateId: "MANDT-BOB-2024",
+        mandateSignatureDate: new Date("2024-02-10")
+      }
+    ]
+  }]
+}, {
+  prettyPrint: true,
+  checkIBAN: true,
+  checkBIC: true
+});
+
+console.log(xml);
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Credit transfers" icon="arrow-right" href="/guides/credit-transfers">
+    Learn about sending payments with credit transfers
+  </Card>
+  <Card title="PAIN versions" icon="code-branch" href="/guides/pain-versions">
+    Compare all PAIN format versions
+  </Card>
+  <Card title="Validation" icon="shield-check" href="/guides/validation">
+    Understand validation and error handling
+  </Card>
+  <Card title="Examples" icon="code" href="/guides/examples">
+    View more real-world examples
+  </Card>
+</CardGroup>

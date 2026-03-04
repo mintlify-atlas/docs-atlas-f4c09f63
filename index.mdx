@@ -1,97 +1,166 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+mode: custom
 ---
 
-## Setting up
+<div className="relative overflow-hidden bg-gradient-to-br from-[#0066CC] via-[#004499] to-[#002255] dark:from-[#004499] dark:via-[#003377] dark:to-[#001133] py-20">
+  <div className="max-w-6xl mx-auto px-6 relative z-10">
+    <div className="text-center">
+      <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
+        Sepa JS XML
+      </h1>
+      <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto mb-8">
+        A TypeScript library to generate SEPA XML files for credit transfers and direct debits
+      </p>
+      <div className="flex flex-wrap gap-4 justify-center">
+        <a 
+          href="/quickstart" 
+          className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-[#0066CC] font-semibold hover:bg-gray-100 transition-colors no-underline"
+        >
+          Get Started
+        </a>
+        <a 
+          href="/api/create-sepa-xml" 
+          className="inline-flex items-center px-6 py-3 rounded-lg border border-white/30 bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors no-underline"
+        >
+          API Reference
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-3">Quick start</h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">Get up and running with SEPA XML generation in minutes</p>
+  
+  <Steps>
+    <Step title="Install the package">
+      Install sepa-js-xml using your preferred package manager:
+      
+      <CodeGroup>
+      ```bash npm
+      npm install sepa-js-xml
+      ```
+      ```bash yarn
+      yarn add sepa-js-xml
+      ```
+      ```bash pnpm
+      pnpm add sepa-js-xml
+      ```
+      ```bash bun
+      bun add sepa-js-xml
+      ```
+      </CodeGroup>
+    </Step>
+    
+    <Step title="Import and configure">
+      Import the library and prepare your payment data:
+      
+      ```typescript
+      import { createSepaXML } from "sepa-js-xml";
+      ```
+    </Step>
+    
+    <Step title="Generate your first SEPA XML">
+      Create a SEPA XML file with your payment information:
+      
+      ```typescript
+      const xml = createSepaXML({
+        id: "MSG-001",
+        creationDate: new Date(),
+        initiatorName: "Your Company Name",
+        positions: [
+          {
+            id: "PMT-001",
+            name: "Debtor Account",
+            iban: "DE89370400440532013000",
+            bic: "COBADEFFXXX",
+            requestedExecutionDate: new Date(),
+            payments: [
+              {
+                id: "TXN-001",
+                name: "Creditor Name",
+                iban: "DE89370400440532013001",
+                bic: "COBADEFFXXX",
+                amount: 100.50,
+                remittanceInformation: "Invoice #12345"
+              }
+            ]
+          }
+        ]
+      });
+      
+      console.log(xml);
+      ```
+      
+      <Note>The library validates IBANs and BICs by default. You can disable validation by passing options.</Note>
+    </Step>
+  </Steps>
+</div>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-3">Key features</h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">Everything you need to generate compliant SEPA XML files</p>
+  
+  <CardGroup cols={2}>
+    <Card title="SEPA credit transfers" icon="arrow-right-arrow-left" href="/guides/credit-transfers">
+      Generate pain.001 XML files for SEPA credit transfer payments
+    </Card>
+    <Card title="SEPA direct debits" icon="money-bill-transfer" href="/guides/direct-debits">
+      Generate pain.008 XML files for SEPA direct debit collections
+    </Card>
+    <Card title="Multiple PAIN formats" icon="file-code" href="/guides/pain-versions">
+      Support for pain.001.001.02, pain.001.001.03, pain.008.001.01, pain.008.001.02, and more
+    </Card>
+    <Card title="Built-in validation" icon="shield-check" href="/guides/validation">
+      Automatic IBAN and BIC validation with configurable error handling
+    </Card>
+    <Card title="TypeScript support" icon="code" href="/installation">
+      Full type definitions for all interfaces and type-safe configuration
+    </Card>
+    <Card title="Batch payments" icon="layer-group" href="/guides/examples">
+      Support for batch booking and multiple payment instructions
+    </Card>
+  </CardGroup>
+</div>
 
-## Make it yours
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-3">Explore documentation</h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">Learn how to use the library and understand the API</p>
+  
+  <CardGroup cols={3}>
+    <Card title="Payment types" icon="book-open" href="/guides/payment-types">
+      Understand credit transfers vs direct debits
+    </Card>
+    <Card title="PAIN versions" icon="file-lines" href="/guides/pain-versions">
+      Learn about different PAIN format versions
+    </Card>
+    <Card title="Examples" icon="code" href="/guides/examples">
+      Real-world usage examples and patterns
+    </Card>
+    <Card title="Core function" icon="function" href="/api/create-sepa-xml">
+      createSepaXML() function reference
+    </Card>
+    <Card title="Data types" icon="brackets-curly" href="/api/sepa-data">
+      Interface and type definitions
+    </Card>
+    <Card title="Options" icon="sliders" href="/api/options">
+      Configuration and validation options
+    </Card>
+  </CardGroup>
+</div>
 
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<div className="mt-20 mb-16 max-w-5xl mx-auto px-6">
+  <div className="rounded-2xl border border-gray-200 dark:border-[#27272a] bg-gray-50 dark:bg-[#1a1d27] p-8 text-center">
+    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">Ready to generate SEPA XML files?</h2>
+    <p className="text-base text-gray-600 dark:text-gray-400 mb-6 max-w-2xl mx-auto">
+      Install sepa-js-xml and start creating compliant SEPA payment files in minutes
+    </p>
+    <a 
+      href="/quickstart" 
+      className="inline-flex items-center px-6 py-3 rounded-lg bg-[#0066CC] text-white font-semibold hover:bg-[#0052A3] transition-colors no-underline"
+    >
+      Get Started
+    </a>
+  </div>
+</div>

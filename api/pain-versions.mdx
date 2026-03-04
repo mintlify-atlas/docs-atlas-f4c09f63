@@ -1,0 +1,202 @@
+---
+title: "PAIN_VERSIONS"
+description: "Available PAIN (Payment Initiation) format versions for SEPA XML generation"
+---
+
+## Overview
+
+The `PAIN_VERSIONS` type defines the supported ISO 20022 payment initiation message formats. These versions determine the XML schema structure for either Credit Transfers (pain.001) or Direct Debits (pain.008).
+
+## Type Definition
+
+```typescript
+type PAIN_VERSIONS =
+  | "pain.001.001.02"
+  | "pain.001.003.02"
+  | "pain.001.001.03"
+  | "pain.001.003.03"
+  | "pain.008.001.01"
+  | "pain.008.003.01"
+  | "pain.008.001.02"
+  | "pain.008.003.02";
+```
+
+## Version Types
+
+### Credit Transfer (pain.001)
+
+Used for SEPA Credit Transfers - sending money from debtor to creditor.
+
+<AccordionGroup>
+  <Accordion title="pain.001.001.02">
+    - Legacy version 2 format
+    - Uses `pain.001.001.02` as the root element name
+    - Includes batch booking at group header level
+    - Uses "MIXD" grouping indicator
+  </Accordion>
+
+  <Accordion title="pain.001.003.02">
+    - Version 2 format for Swiss implementations
+    - Uses `pain.001.003.02` as the root element name
+    - Similar structure to pain.001.001.02
+  </Accordion>
+
+  <Accordion title="pain.001.001.03" icon="star">
+    - **Current standard** (default in library)
+    - Uses `CstmrCdtTrfInitn` as the root element name
+    - Version 3 format with enhanced transaction details
+    - Requires `end2endReference` for each payment
+    - BIC is optional for creditor in SEPA zone
+  </Accordion>
+
+  <Accordion title="pain.001.003.03">
+    - Version 3 format for Swiss implementations
+    - Uses `CstmrCdtTrfInitn` as the root element name
+    - Enhanced features similar to pain.001.001.03
+  </Accordion>
+</AccordionGroup>
+
+### Direct Debit (pain.008)
+
+Used for SEPA Direct Debits - collecting money from debtor accounts.
+
+<AccordionGroup>
+  <Accordion title="pain.008.001.01">
+    - Legacy version 1 format
+    - Uses `pain.008.001.01` as the root element name
+    - Requires mandate information for each transaction
+  </Accordion>
+
+  <Accordion title="pain.008.003.01">
+    - Version 1 format for Swiss implementations
+    - Uses `pain.008.003.01` as the root element name
+  </Accordion>
+
+  <Accordion title="pain.008.001.02">
+    - Version 2 format
+    - Uses `CstmrDrctDbtInitn` as the root element name
+    - Requires `localInstrumentation` and `sequenceType`
+    - BIC is optional for debtor in SEPA zone
+  </Accordion>
+
+  <Accordion title="pain.008.003.02">
+    - Version 2 format for Swiss implementations
+    - Uses `CstmrDrctDbtInitn` as the root element name
+  </Accordion>
+</AccordionGroup>
+
+## Usage
+
+Specify the PAIN version in the `SepaData` object when calling `createSepaXML()`:
+
+```typescript
+import { createSepaXML } from "sepa-js-xml";
+
+// Credit Transfer with version 3 (default)
+const creditTransferXML = createSepaXML({
+  painVersion: "pain.001.001.03",
+  id: "MSG-001",
+  creationDate: new Date(),
+  initiatorName: "My Company",
+  positions: [
+    {
+      id: "BATCH-001",
+      name: "My Company",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      requestedExecutionDate: new Date(),
+      payments: [
+        {
+          id: "PMT-001",
+          name: "Supplier Ltd",
+          iban: "GB29NWBK60161331926819",
+          amount: 1000.00,
+          remittanceInformation: "Invoice #12345",
+          end2endReference: "INV12345",
+        },
+      ],
+    },
+  ],
+});
+
+// Direct Debit with version 2
+const directDebitXML = createSepaXML({
+  painVersion: "pain.008.001.02",
+  localInstrumentation: "CORE",
+  sequenceType: "RCUR",
+  id: "MSG-002",
+  creationDate: new Date(),
+  initiatorName: "My Company",
+  positions: [
+    {
+      id: "BATCH-002",
+      name: "My Company",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      collectionDate: new Date(),
+      requestedExecutionDate: new Date(),
+      payments: [
+        {
+          id: "PMT-002",
+          name: "Customer Name",
+          iban: "GB29NWBK60161331926819",
+          bic: "NWBKGB2L",
+          amount: 50.00,
+          mandateId: "MANDATE-123",
+          mandateSignatureDate: new Date("2023-01-15"),
+          remittanceInformation: "Monthly subscription",
+        },
+      ],
+    },
+  ],
+});
+```
+
+## Version Detection
+
+The library automatically determines the payment method based on the version:
+
+- **pain.001.x.x** → Credit Transfer (TRF)
+- **pain.008.x.x** → Direct Debit (DD)
+
+## Default Version
+
+If no `painVersion` is specified, the library defaults to `pain.001.001.03`.
+
+```typescript
+// Uses pain.001.001.03 by default
+const xml = createSepaXML({
+  id: "MSG-001",
+  creationDate: new Date(),
+  initiatorName: "My Company",
+  positions: [/* ... */],
+});
+```
+
+## Key Differences
+
+### Version 2 vs Version 3
+
+| Feature | Version 2 (.02) | Version 3 (.03) |
+|---------|----------------|----------------|
+| Root element | `pain.00x.00x.0x` | `CstmrCdtTrfInitn` / `CstmrDrctDbtInitn` |
+| Batch booking | Group header level | Payment info level |
+| Transaction counts | Group header only | Both group header and payment info |
+| End-to-end reference | Optional | Required for pain.001.001.03 |
+| Grouping indicator | "MIXD" required | Not used |
+
+### Credit Transfer vs Direct Debit
+
+| Feature | Credit Transfer (pain.001) | Direct Debit (pain.008) |
+|---------|---------------------------|-------------------------|
+| Direction | Push payment | Pull payment |
+| Local instrumentation | Not used | Required (CORE/COR1/B2B) |
+| Sequence type | Not used | Required (FRST/RCUR/OOFF/FNAL) |
+| Mandate info | Not required | Required |
+| Collection date | Not used | Required |
+
+## Related Types
+
+- [LOCAL_INSTRUMENTATION](/api/types) - Used with Direct Debit versions
+- [SEQUENCE_TYPE](/api/types) - Used with Direct Debit versions
+- [SepaData](/api/sepa-data) - Main data structure interface

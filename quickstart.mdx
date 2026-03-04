@@ -1,80 +1,283 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Generate your first SEPA XML file in minutes
 ---
 
-## Get started in three steps
+This guide walks you through creating a SEPA credit transfer XML file from scratch.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+- Node.js installed (v14 or higher recommended)
+- A JavaScript or TypeScript project set up
+- Sepa JS XML installed (see [Installation](/installation))
 
-### Step 2: Deploy your changes
+## Generate a credit transfer XML
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+Follow these steps to create your first SEPA credit transfer XML file:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<Steps>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+<Step title="Import the library">
 
-### Step 3: Go live
+Start by importing the `createSepaXML` function from the package:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<CodeGroup>
+
+```typescript TypeScript
+import { createSepaXML, type SepaData } from 'sepa-js-xml';
+```
+
+```javascript JavaScript
+import { createSepaXML } from 'sepa-js-xml';
+```
+
+</CodeGroup>
+
+</Step>
+
+<Step title="Prepare your payment data">
+
+Create a data object with your payment information. Here's a complete example:
+
+```typescript
+const paymentData: SepaData = {
+  id: "MSG-001",
+  creationDate: new Date(),
+  initiatorName: "Your Company Name",
+  positions: [
+    {
+      id: "BATCH-001",
+      name: "Your Company Name",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      requestedExecutionDate: new Date(),
+      payments: [
+        {
+          id: "PAYMENT-001",
+          name: "John Doe",
+          iban: "DE89370400440532013001",
+          bic: "COBADEFFXXX",
+          amount: 150.50,
+          remittanceInformation: "Invoice #12345",
+          end2endReference: "INV-12345"
+        },
+        {
+          id: "PAYMENT-002",
+          name: "Jane Smith",
+          iban: "DE89370400440532013002",
+          bic: "COBADEFFXXX",
+          amount: 250.00,
+          remittanceInformation: "Invoice #12346",
+          end2endReference: "INV-12346"
+        }
+      ]
+    }
+  ]
+};
+```
+
+<Warning>
+The IBANs and BICs in this example are for demonstration only. Replace them with valid account details before generating production files.
+</Warning>
+
+</Step>
+
+<Step title="Generate the XML">
+
+Call the `createSepaXML` function with your payment data:
+
+```typescript
+const xml = createSepaXML(paymentData);
+
+console.log(xml);
+```
+
+For better readability during development, you can enable pretty printing:
+
+```typescript
+const xml = createSepaXML(paymentData, {
+  prettyPrint: true,
+  checkIBAN: true,
+  checkBIC: true
+});
+```
+
+</Step>
+
+<Step title="Save the XML file">
+
+Write the generated XML to a file:
+
+```typescript
+import { writeFileSync } from 'fs';
+
+writeFileSync('sepa-payment.xml', xml, 'utf-8');
+console.log('SEPA XML file generated successfully!');
+```
+
+</Step>
+
+</Steps>
+
+## Complete example
+
+Here's a complete working example that generates a SEPA credit transfer XML file:
+
+```typescript
+import { createSepaXML, type SepaData } from 'sepa-js-xml';
+import { writeFileSync } from 'fs';
+
+const paymentData: SepaData = {
+  id: "MSG-001",
+  creationDate: new Date(),
+  initiatorName: "Your Company Name",
+  positions: [
+    {
+      id: "BATCH-001",
+      name: "Your Company Name",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      requestedExecutionDate: new Date(),
+      payments: [
+        {
+          id: "PAYMENT-001",
+          name: "John Doe",
+          iban: "DE89370400440532013001",
+          bic: "COBADEFFXXX",
+          amount: 150.50,
+          remittanceInformation: "Invoice #12345",
+          end2endReference: "INV-12345"
+        },
+        {
+          id: "PAYMENT-002",
+          name: "Jane Smith",
+          iban: "DE89370400440532013002",
+          bic: "COBADEFFXXX",
+          amount: 250.00,
+          remittanceInformation: "Invoice #12346",
+          end2endReference: "INV-12346"
+        }
+      ]
+    }
+  ]
+};
+
+try {
+  const xml = createSepaXML(paymentData, {
+    prettyPrint: true,
+    checkIBAN: true,
+    checkBIC: true
+  });
+  
+  writeFileSync('sepa-payment.xml', xml, 'utf-8');
+  console.log('SEPA XML file generated successfully!');
+} catch (error) {
+  console.error('Error generating SEPA XML:', error.message);
+}
+```
+
+## Configuration options
+
+You can customize the XML generation with these options:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `prettyPrint` | `boolean` | `false` | Format the XML with indentation for readability |
+| `checkIBAN` | `boolean` | `true` | Validate IBAN codes using ibantools |
+| `checkBIC` | `boolean` | `true` | Validate BIC codes using ibantools |
+
+```typescript
+const xml = createSepaXML(paymentData, {
+  prettyPrint: true,    // Enable formatted output
+  checkIBAN: true,      // Validate IBANs (recommended)
+  checkBIC: true        // Validate BICs (recommended)
+});
+```
+
+<Note>
+It's recommended to keep IBAN and BIC validation enabled in production to catch invalid account details before submitting payments to your bank.
+</Note>
+
+## Understanding the data structure
+
+The `SepaData` interface has three main levels:
+
+### 1. Message level (SepaData)
+
+```typescript
+{
+  id: "MSG-001",                     // Message ID (max 35 chars)
+  creationDate: new Date(),          // When the message was created
+  initiatorName: "Your Company",     // Your company name (max 70 chars)
+  painVersion: "pain.001.001.03",    // Optional: PAIN format version
+  positions: [...]                    // Array of creditor positions
+}
+```
+
+### 2. Position level (CreditorPayments)
+
+```typescript
+{
+  id: "BATCH-001",                   // Position ID (max 35 chars)
+  name: "Your Company Name",         // Debtor name (max 70 chars)
+  iban: "DE89370400440532013000",    // Debtor IBAN
+  bic: "COBADEFFXXX",                // Debtor BIC (optional in some versions)
+  requestedExecutionDate: new Date(), // When to execute the payment
+  batchBooking: true,                 // Optional: batch booking flag
+  payments: [...]                     // Array of individual payments
+}
+```
+
+### 3. Payment level (Payment)
+
+```typescript
+{
+  id: "PAYMENT-001",                 // Payment ID (max 35 chars)
+  name: "John Doe",                  // Creditor name (max 70 chars)
+  iban: "DE89370400440532013001",    // Creditor IBAN
+  bic: "COBADEFFXXX",                // Creditor BIC (optional in some versions)
+  amount: 150.50,                     // Amount in EUR
+  currency: "EUR",                    // Optional: defaults to EUR
+  remittanceInformation: "Invoice #12345", // Payment reference
+  end2endReference: "INV-12345"      // End-to-end reference (required in pain.001.001.03)
+}
+```
+
+## Validation and error handling
+
+The library performs automatic validation and throws errors if:
+
+- The `id` or `initiatorName` exceeds the maximum length
+- IBAN or BIC codes are invalid (when validation is enabled)
+- Required fields are missing for specific PAIN versions
+
+Always wrap `createSepaXML` calls in a try-catch block:
+
+```typescript
+try {
+  const xml = createSepaXML(paymentData);
+} catch (error) {
+  if (error.message.includes('Max length')) {
+    console.error('Field length validation failed:', error.message);
+  } else if (error.message.includes('not valid')) {
+    console.error('IBAN/BIC validation failed:', error.message);
+  } else {
+    console.error('Unexpected error:', error.message);
+  }
+}
+```
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you've generated your first SEPA XML file, explore more advanced features:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="API Reference" icon="code" href="/api/create-sepa-xml">
+    View detailed API documentation and type signatures
+  </Card>
+  <Card title="Direct Debits" icon="money-bill" href="/guides/direct-debits">
+    Learn how to create SEPA direct debit XML files
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

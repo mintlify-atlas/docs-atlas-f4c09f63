@@ -1,0 +1,204 @@
+---
+title: 'Payment'
+description: 'Individual payment transaction details'
+---
+
+The `Payment` interface represents a single payment transaction within a payment information block. Each payment contains the details of a transfer to or from a specific account.
+
+## Interface Definition
+
+<ParamField path="id" type="string" required>
+  Unique identifier for this payment transaction.
+  
+  **Constraints:**
+  - Maximum length: 35 characters
+  - Must be unique within the payment information block
+  
+  **Example:** `Payment 1`, `123`
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  The name of the creditor (for credit transfers) or debtor (for direct debits).
+  
+  **Constraints:**
+  - Maximum length: 70 characters
+  
+  **Example:** `Money Company`, `Test`
+</ParamField>
+
+<ParamField path="iban" type="string" required>
+  The IBAN of the creditor or debtor account.
+  
+  **Validation:**
+  - Must be a valid IBAN format
+  - Validated using IBANTools library (unless `checkIBAN` option is set to `false`)
+  
+  **Example:** `DE02701500000000594937`
+</ParamField>
+
+<ParamField path="bic" type="string" optional>
+  The BIC (Bank Identifier Code) of the creditor or debtor's bank.
+  
+  **Validation:**
+  - Must be a valid BIC format (unless `checkBIC` option is set to `false`)
+  - Validated using IBANTools library
+  
+  **Note:** BIC is optional for SEPA Credit Transfer and SEPA Direct Debit formats on the creditor side. See [issue #287](https://github.com/jerebtw/Sepa-JS-XML/issues/287).
+  
+  **Example:** `SSKMDEMM`
+</ParamField>
+
+<ParamField path="mandateId" type="string" optional>
+  The mandate identifier for direct debit transactions.
+  
+  Only applicable for direct debits (pain.008.x formats). This is the unique identifier of the mandate signed by the debtor authorizing the creditor to collect payments.
+</ParamField>
+
+<ParamField path="mandateSignatureDate" type="Date" optional>
+  The date when the direct debit mandate was signed.
+  
+  Only applicable for direct debits (pain.008.x formats). Will be formatted as YYYY-MM-DD in the output XML.
+</ParamField>
+
+<ParamField path="amount" type="number" required>
+  The payment amount in the specified currency.
+  
+  **Format:**
+  - Will be formatted to 2 decimal places in the XML output
+  - Must be a positive number
+  
+  **Example:** `123`, `123.83`, `69`
+</ParamField>
+
+<ParamField path="currency" type="string" optional>
+  The ISO 4217 currency code for the payment.
+  
+  **Default:** `EUR`
+  
+  **Example:** `EUR`, `USD`
+</ParamField>
+
+<ParamField path="remittanceInformation" type="string" required>
+  Unstructured remittance information sent with the payment.
+  
+  This is the payment reference or description that will be visible to both the debtor and creditor.
+  
+  **Example:** `WOW 1`, `Money please`, `Invoice 12345`
+</ParamField>
+
+<ParamField path="end2endReference" type="string" optional>
+  The end-to-end reference for the payment transaction.
+  
+  **Note:** Required for pain.001.001.03 and pain.001.003.03 formats. The library will throw an error if this field is missing when using these formats.
+  
+  **Example:** `lol`, `E2E-12345`
+</ParamField>
+
+## Usage in Payment Information Block
+
+Payments are part of the `CreditorPayments` structure:
+
+```typescript
+interface CreditorPayments {
+  // ... other fields
+  payments: Payment[];
+}
+```
+
+## Examples
+
+### Basic Payment (EUR)
+
+```typescript
+const payment = {
+  id: 'Payment 1',
+  amount: 123,
+  iban: 'DE02701500000000594937',
+  bic: 'SSKMDEMM',
+  name: 'Test',
+  remittanceInformation: 'WOW 1',
+};
+```
+
+### Payment with Custom Currency
+
+```typescript
+const payment = {
+  id: 'Payment 2',
+  amount: 123.83,
+  iban: 'DE02701500000000594937',
+  bic: 'SSKMDEMM',
+  name: 'Test',
+  remittanceInformation: 'WOW 2',
+  currency: 'USD',
+};
+```
+
+### Payment with End-to-End Reference
+
+```typescript
+const payment = {
+  id: '123',
+  amount: 230,
+  currency: 'EUR',
+  name: 'Money Company',
+  iban: 'DE02701500000000594937',
+  bic: 'SSKMDEMM',
+  remittanceInformation: 'Money please',
+  end2endReference: 'lol',
+};
+```
+
+### Payment Without BIC (Optional)
+
+```typescript
+const payment = {
+  id: '123',
+  amount: 230,
+  currency: 'EUR',
+  name: 'Money Company',
+  iban: 'DE02701500000000594937',
+  // BIC is optional for SEPA formats on creditor side
+  remittanceInformation: 'Money please',
+  end2endReference: 'lol',
+};
+```
+
+### Direct Debit Payment with Mandate
+
+```typescript
+import dayjs from 'dayjs';
+
+const payment = {
+  id: 'DD-001',
+  amount: 50.00,
+  currency: 'EUR',
+  name: 'Customer Name',
+  iban: 'DE02701500000000594937',
+  bic: 'SSKMDEMM',
+  mandateId: 'MANDATE-12345',
+  mandateSignatureDate: dayjs.utc('2022-01-15').toDate(),
+  remittanceInformation: 'Monthly subscription',
+};
+```
+
+## Validation
+
+The library performs the following validations on Payment fields:
+
+1. **ID length**: Must not exceed 35 characters
+2. **Name length**: Must not exceed 70 characters
+3. **IBAN format**: Validated using IBANTools (unless disabled)
+4. **BIC format**: Validated using IBANTools (unless disabled)
+5. **End-to-end reference**: Required for specific pain formats (pain.001.001.03, pain.001.003.03)
+
+## Related Types
+
+<CardGroup cols={2}>
+  <Card title="CreditorPayments" icon="building-columns" href="/api/creditor-payments">
+    Payment information block structure
+  </Card>
+  <Card title="SepaData" icon="file-lines" href="/api/sepa-data">
+    Main SEPA data structure
+  </Card>
+</CardGroup>

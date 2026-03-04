@@ -1,0 +1,187 @@
+---
+title: Payment types
+description: Learn about SEPA credit transfers and direct debits, and when to use each payment type
+---
+
+Sepa JS XML supports two primary SEPA payment types: credit transfers and direct debits. Each type serves different use cases and uses different PAIN message formats.
+
+## Credit transfers (pain.001)
+
+Credit transfers are outgoing payments where you transfer money from your account to another account. These are commonly used for:
+
+- Paying suppliers and vendors
+- Employee salary payments
+- One-time or recurring transfers
+- Batch payment processing
+
+Credit transfers use the `pain.001` message format and are identified by the payment method code `TRF`.
+
+### Key characteristics
+
+<CardGroup cols={2}>
+  <Card title="Debtor initiates" icon="arrow-right">
+    You (the debtor) initiate the payment from your account
+  </Card>
+  <Card title="Immediate execution" icon="clock">
+    Payments execute on the requested execution date
+  </Card>
+  <Card title="No mandate required" icon="file-lines">
+    No authorization needed from the recipient
+  </Card>
+  <Card title="BIC optional" icon="building-columns">
+    BIC code is optional for SEPA payments
+  </Card>
+</CardGroup>
+
+### When to use credit transfers
+
+Use credit transfers when:
+
+- You need to send money to another party
+- You have one-time or ad-hoc payments
+- You're processing payroll or vendor payments
+- You want immediate control over payment timing
+
+## Direct debits (pain.008)
+
+Direct debits are incoming payments where you collect money from another account. These are commonly used for:
+
+- Subscription and membership fees
+- Recurring utility bills
+- Automatic loan repayments
+- Invoice collections
+
+Direct debits use the `pain.008` message format and are identified by the payment method code `DD`.
+
+### Key characteristics
+
+<CardGroup cols={2}>
+  <Card title="Creditor initiates" icon="arrow-left">
+    You (the creditor) pull money from the debtor's account
+  </Card>
+  <Card title="Collection date" icon="calendar">
+    Payments collect on the specified collection date
+  </Card>
+  <Card title="Mandate required" icon="file-signature">
+    Requires a signed mandate from the debtor
+  </Card>
+  <Card title="Sequence types" icon="repeat">
+    Supports FRST, RCUR, OOFF, and FNAL sequences
+  </Card>
+</CardGroup>
+
+### When to use direct debits
+
+Use direct debits when:
+
+- You need to collect payments from customers
+- You have recurring subscription payments
+- You want to automate payment collection
+- You have customer authorization (mandate)
+
+## Comparing payment types
+
+<Accordion title="Payment direction">
+  **Credit transfer**: You send money out (push payment)
+  
+  **Direct debit**: You collect money in (pull payment)
+</Accordion>
+
+<Accordion title="Required fields">
+  **Credit transfer**: Debtor account, creditor account, amount, execution date
+  
+  **Direct debit**: Creditor account, debtor account, amount, collection date, mandate ID, mandate signature date
+</Accordion>
+
+<Accordion title="PAIN formats">
+  **Credit transfer**: pain.001.001.02, pain.001.003.02, pain.001.001.03, pain.001.003.03
+  
+  **Direct debit**: pain.008.001.01, pain.008.003.01, pain.008.001.02, pain.008.003.02
+</Accordion>
+
+<Accordion title="Authorization">
+  **Credit transfer**: No authorization needed from recipient
+  
+  **Direct debit**: Requires signed mandate from debtor
+</Accordion>
+
+## Code example
+
+Here's how to specify the payment type:
+
+<CodeGroup>
+```typescript Credit transfer
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03", // Credit transfer format
+  id: "MSG001",
+  creationDate: new Date(),
+  initiatorName: "My Company",
+  positions: [{
+    id: "PMT001",
+    name: "My Company",
+    iban: "DE02701500000000594937",
+    requestedExecutionDate: new Date(),
+    payments: [{
+      id: "TXN001",
+      name: "Supplier Ltd",
+      iban: "DE89370400440532013000",
+      amount: 150.00,
+      remittanceInformation: "Invoice 12345",
+      end2endReference: "INV12345"
+    }]
+  }]
+});
+```
+
+```typescript Direct debit
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.008.001.02", // Direct debit format
+  id: "MSG001",
+  creationDate: new Date(),
+  initiatorName: "My Company",
+  localInstrumentation: "CORE",
+  sequenceType: "RCUR",
+  positions: [{
+    id: "PMT001",
+    name: "My Company",
+    iban: "DE02701500000000594937",
+    collectionDate: new Date(),
+    requestedExecutionDate: new Date(),
+    payments: [{
+      id: "TXN001",
+      name: "Customer A",
+      iban: "DE89370400440532013000",
+      amount: 29.99,
+      remittanceInformation: "Monthly subscription",
+      mandateId: "MANDATE123",
+      mandateSignatureDate: new Date("2024-01-15")
+    }]
+  }]
+});
+```
+</CodeGroup>
+
+<Note>
+The payment type is automatically determined by the `painVersion` you specify. Use `pain.001.*` for credit transfers and `pain.008.*` for direct debits.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Credit transfers" icon="arrow-right" href="/guides/credit-transfers">
+    Learn how to create credit transfer payments
+  </Card>
+  <Card title="Direct debits" icon="arrow-left" href="/guides/direct-debits">
+    Learn how to create direct debit payments
+  </Card>
+  <Card title="PAIN versions" icon="code-branch" href="/guides/pain-versions">
+    Explore all supported PAIN format versions
+  </Card>
+  <Card title="Examples" icon="code" href="/guides/examples">
+    View complete real-world examples
+  </Card>
+</CardGroup>

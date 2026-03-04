@@ -1,0 +1,149 @@
+---
+title: 'CreditorPayments'
+description: 'Payment information block for a creditor/debtor account'
+---
+
+The `CreditorPayments` interface represents a payment information block in SEPA XML. Each block groups multiple payments to or from a single creditor/debtor account.
+
+## Interface Definition
+
+<ParamField path="id" type="string" required>
+  Unique identifier for this payment information block.
+  
+  **Constraints:**
+  - Maximum length: 35 characters
+  - Must be unique within the SEPA document
+</ParamField>
+
+<ParamField path="batchBooking" type="boolean" optional>
+  Whether payments in this block should be booked as a batch or individually.
+  
+  - `true` - All payments are booked together as one entry
+  - `false` - Each payment is booked separately
+  
+  **Default:** `true`
+</ParamField>
+
+<ParamField path="requestedExecutionDate" type="Date" required>
+  The date when the credit transfer should be executed.
+  
+  Only applicable for credit transfers (pain.001.x formats). Will be formatted as YYYY-MM-DD in the output XML.
+</ParamField>
+
+<ParamField path="collectionDate" type="Date" optional>
+  The date when the direct debit should be collected.
+  
+  Only applicable for direct debits (pain.008.x formats). Will be formatted as YYYY-MM-DD in the output XML.
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  The name of the creditor (for direct debits) or debtor (for credit transfers).
+  
+  **Constraints:**
+  - Maximum length: 70 characters
+</ParamField>
+
+<ParamField path="iban" type="string" required>
+  The IBAN of the creditor (for direct debits) or debtor (for credit transfers) account.
+  
+  **Validation:**
+  - Must be a valid IBAN format
+  - Validated using IBANTools library (unless `checkIBAN` option is set to `false`)
+  
+  **Example:** `DE02701500000000594937`
+</ParamField>
+
+<ParamField path="bic" type="string" optional>
+  The BIC (Bank Identifier Code) of the creditor or debtor's bank.
+  
+  **Validation:**
+  - Must be a valid BIC format (unless `checkBIC` option is set to `false`)
+  - Validated using IBANTools library
+  
+  **Note:** BIC is optional for SEPA Credit Transfer (pain.001.x) and SEPA Direct Debit (pain.008.x) formats on the debtor side. See [issue #287](https://github.com/jerebtw/Sepa-JS-XML/issues/287).
+  
+  **Example:** `SSKMDEMM`
+</ParamField>
+
+<ParamField path="payments" type="Payment[]" required>
+  An array of individual payment transactions to be executed.
+  
+  See [Payment](/api/payment) for the structure of each payment.
+</ParamField>
+
+## Relationship to SepaData
+
+The `CreditorPayments` interface is used as part of the `SepaData` structure:
+
+```typescript
+interface SepaData {
+  // ... other fields
+  positions: CreditorPayments[];
+}
+```
+
+Each position in the `positions` array represents a separate payment information block (PmtInf) in the generated SEPA XML.
+
+## Example
+
+### Credit Transfer
+
+```typescript
+import dayjs from 'dayjs';
+
+const creditorPayment = {
+  id: 'Test123',
+  batchBooking: false,
+  iban: 'DE02701500000000594937',
+  bic: 'SSKMDEMM',
+  requestedExecutionDate: dayjs.utc('2022-06-16').toDate(),
+  name: 'Pos 1',
+  payments: [
+    {
+      id: '123',
+      amount: 230,
+      currency: 'EUR',
+      name: 'Money Company',
+      iban: 'DE02701500000000594937',
+      bic: 'SSKMDEMM',
+      remittanceInformation: 'Money please',
+      end2endReference: 'lol',
+    },
+  ],
+};
+```
+
+### Without BIC (Optional)
+
+```typescript
+const creditorPayment = {
+  id: 'Test123',
+  batchBooking: false,
+  iban: 'DE02701500000000594937',
+  // BIC is optional for SEPA formats
+  requestedExecutionDate: dayjs.utc('2022-06-16').toDate(),
+  name: 'Pos 1',
+  payments: [
+    {
+      id: '123',
+      amount: 230,
+      currency: 'EUR',
+      name: 'Money Company',
+      iban: 'DE02701500000000594937',
+      remittanceInformation: 'Money please',
+      end2endReference: 'lol',
+    },
+  ],
+};
+```
+
+## Related Types
+
+<CardGroup cols={2}>
+  <Card title="SepaData" icon="file-lines" href="/api/sepa-data">
+    Main SEPA data structure
+  </Card>
+  <Card title="Payment" icon="credit-card" href="/api/payment">
+    Individual payment transaction details
+  </Card>
+</CardGroup>

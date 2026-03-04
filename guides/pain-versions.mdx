@@ -1,0 +1,388 @@
+---
+title: PAIN versions
+description: Understanding all supported PAIN format versions and their differences
+---
+
+Sepa JS XML supports eight PAIN (Payment Initiation) format versions. This guide helps you choose the right version for your needs.
+
+## Supported versions
+
+From the source code (index.ts:109-117), these are all supported versions:
+
+<CodeGroup>
+```typescript Type definition
+export type PAIN_VERSIONS =
+  | "pain.001.001.02"  // Credit Transfer v02
+  | "pain.001.003.02"  // Credit Transfer v02 (variant)
+  | "pain.001.001.03"  // Credit Transfer v03
+  | "pain.001.003.03"  // Credit Transfer v03 (variant)
+  | "pain.008.001.01"  // Direct Debit v01
+  | "pain.008.003.01"  // Direct Debit v01 (variant)
+  | "pain.008.001.02"  // Direct Debit v02
+  | "pain.008.003.02"; // Direct Debit v02 (variant)
+```
+
+```typescript Usage
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03", // Specify version here
+  // ... rest of config
+});
+```
+</CodeGroup>
+
+## Version structure
+
+PAIN versions follow this pattern: `pain.XXX.YYY.ZZ`
+
+<Steps>
+  <Step title="XXX - Message type">
+    - `001` = Credit Transfer (SCT)
+    - `008` = Direct Debit (SDD)
+  </Step>
+  
+  <Step title="YYY - Variant">
+    - `001` = Standard variant
+    - `003` = Alternative variant (usually identical)
+  </Step>
+  
+  <Step title="ZZ - Version number">
+    - `01` = Version 1 (older)
+    - `02` = Version 2 (older)
+    - `03` = Version 3 (current SEPA standard)
+  </Step>
+</Steps>
+
+## Credit transfer versions
+
+### pain.001.001.02
+
+<Tabs>
+  <Tab title="Overview">
+    Older credit transfer format, still widely supported.
+    
+    ```typescript
+    painVersion: "pain.001.001.02"
+    ```
+  </Tab>
+  
+  <Tab title="Features">
+    - BIC **required** for debtor and creditor
+    - No end-to-end reference required
+    - Batch booking at document level
+    - XML root element: `pain.001.001.02`
+  </Tab>
+  
+  <Tab title="When to use">
+    Use when:
+    - Your bank requires version 02
+    - You need document-level batch booking
+    - You have BIC codes available
+  </Tab>
+</Tabs>
+
+### pain.001.003.02
+
+Identical to pain.001.001.02 with a different variant number. From the source code (index.ts:100), both map to the same type.
+
+### pain.001.001.03 (Recommended)
+
+<Tabs>
+  <Tab title="Overview">
+    Current SEPA credit transfer standard.
+    
+    ```typescript
+    painVersion: "pain.001.001.03"
+    ```
+  </Tab>
+  
+  <Tab title="Features">
+    - BIC **optional** for debtor and creditor
+    - End-to-end reference **required**
+    - Batch booking at position level
+    - Transaction count and control sum per position
+    - XML root element: `CstmrCdtTrfInitn`
+  </Tab>
+  
+  <Tab title="When to use">
+    Use when:
+    - You want the latest SEPA standard
+    - You don't have BIC codes
+    - You need position-level batch booking
+    - **This is the recommended version for new implementations**
+  </Tab>
+</Tabs>
+
+### pain.001.003.03
+
+Identical to pain.001.001.03 with a different variant number. From the source code (index.ts:102), both map to `CstmrCdtTrfInitn`.
+
+## Direct debit versions
+
+### pain.008.001.01
+
+<Tabs>
+  <Tab title="Overview">
+    Older direct debit format.
+    
+    ```typescript
+    painVersion: "pain.008.001.01"
+    ```
+  </Tab>
+  
+  <Tab title="Features">
+    - XML root element: `pain.008.001.01`
+    - Older schema structure
+    - Limited SEPA features
+  </Tab>
+  
+  <Tab title="When to use">
+    Use when:
+    - Your bank requires version 01
+    - Compatibility with legacy systems
+  </Tab>
+</Tabs>
+
+### pain.008.003.01
+
+Identical to pain.008.001.01 with a different variant number.
+
+### pain.008.001.02 (Recommended)
+
+<Tabs>
+  <Tab title="Overview">
+    Current SEPA direct debit standard.
+    
+    ```typescript
+    painVersion: "pain.008.001.02"
+    ```
+  </Tab>
+  
+  <Tab title="Features">
+    - BIC optional for creditor
+    - Full mandate information support
+    - Sequence type support (FRST, RCUR, OOFF, FNAL)
+    - Local instrumentation (CORE, COR1, B2B)
+    - XML root element: `CstmrDrctDbtInitn`
+  </Tab>
+  
+  <Tab title="When to use">
+    Use when:
+    - You want the latest SEPA standard
+    - You need direct debit collections
+    - **This is the recommended version for new implementations**
+  </Tab>
+</Tabs>
+
+### pain.008.003.02
+
+Identical to pain.008.001.02 with a different variant number. From the source code (index.ts:106), both map to `CstmrDrctDbtInitn`.
+
+## Key differences between versions
+
+### Version 02 vs Version 03
+
+<Accordion title="BIC requirement">
+  **Version 02**: BIC is required for both parties
+  
+  **Version 03**: BIC is optional (from index.ts:225-230, index.ts:293-295, index.ts:381-383)
+  
+  ```typescript
+  // Version 03 - BIC optional
+  positions: [{
+    iban: "DE02701500000000594937",
+    // bic field is optional
+  }]
+  ```
+</Accordion>
+
+<Accordion title="End-to-end reference">
+  **Version 02**: Optional
+  
+  **Version 03**: Required (from index.ts:337-341)
+  
+  ```typescript
+  // Version 03 - Required
+  payments: [{
+    end2endReference: "REF123" // Must be provided
+  }]
+  ```
+</Accordion>
+
+<Accordion title="Batch booking">
+  **Version 02**: At document level via `SepaData.batchBooking` (from index.ts:173-177)
+  
+  **Version 03**: At position level via `CreditorPayments.batchBooking` (from index.ts:238-244)
+  
+  ```typescript
+  // Version 02
+  const xml = createSepaXML({
+    painVersion: "pain.001.001.02",
+    batchBooking: true, // Document level
+    positions: [/* ... */]
+  });
+  
+  // Version 03
+  const xml = createSepaXML({
+    painVersion: "pain.001.001.03",
+    positions: [{
+      batchBooking: false, // Position level
+      payments: [/* ... */]
+    }]
+  });
+  ```
+</Accordion>
+
+<Accordion title="Transaction counts">
+  **Version 02**: Only at document level
+  
+  **Version 03**: Both document and position level (from index.ts:238-244)
+  
+  Version 03 includes `NbOfTxs` and `CtrlSum` at both levels for better tracking.
+</Accordion>
+
+<Accordion title="XML structure">
+  **Version 02**: Uses format-specific root element (`pain.001.001.02`)
+  
+  **Version 03**: Uses standard SEPA element names (`CstmrCdtTrfInitn`, `CstmrDrctDbtInitn`)
+</Accordion>
+
+## Version detection
+
+From the source code (index.ts:142-146), the library automatically detects the version number:
+
+```typescript
+const painVersion =
+  parseInt(
+    painFormat.substring(painFormat.length, painFormat.length - 2),
+    10,
+  ) + (painFormat.indexOf("pain.008") === 0 ? 1 : 0);
+```
+
+This determines whether version-specific features are enabled:
+- Version 2 (02) → Legacy features
+- Version 3 (03) → Modern SEPA features
+
+## Default version
+
+From the source code (index.ts:126), the default is:
+
+```typescript
+const PAIN_VERSION = "pain.001.001.03";
+```
+
+If you don't specify `painVersion`, credit transfer version 03 is used.
+
+## Choosing the right version
+
+<Steps>
+  <Step title="Check bank requirements">
+    Contact your bank to see which versions they accept. Most modern banks support version 03.
+  </Step>
+  
+  <Step title="Use version 03 for new projects">
+    Unless you have specific requirements, use:
+    - `pain.001.001.03` for credit transfers
+    - `pain.008.001.02` for direct debits
+  </Step>
+  
+  <Step title="Consider BIC availability">
+    If you don't have BIC codes, you must use version 03:
+    - Version 02: BIC required
+    - Version 03: BIC optional
+  </Step>
+  
+  <Step title="Check for end-to-end references">
+    If you can't provide end-to-end references, use version 02:
+    - Version 02: Not required
+    - Version 03: Required
+  </Step>
+</Steps>
+
+## Migration guide
+
+### From version 02 to 03
+
+<CodeGroup>
+```typescript Before (v02)
+const xml = createSepaXML({
+  painVersion: "pain.001.001.02",
+  batchBooking: true, // Document level
+  id: "MSG001",
+  creationDate: new Date(),
+  initiatorName: "Company",
+  positions: [{
+    id: "PMT001",
+    name: "Company",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM", // Required
+    requestedExecutionDate: new Date(),
+    payments: [{
+      id: "TXN001",
+      name: "Recipient",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX", // Required
+      amount: 100.00,
+      remittanceInformation: "Payment"
+      // No end2endReference needed
+    }]
+  }]
+});
+```
+
+```typescript After (v03)
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03",
+  // No document-level batchBooking
+  id: "MSG001",
+  creationDate: new Date(),
+  initiatorName: "Company",
+  positions: [{
+    id: "PMT001",
+    name: "Company",
+    iban: "DE02701500000000594937",
+    // bic is optional
+    batchBooking: true, // Position level
+    requestedExecutionDate: new Date(),
+    payments: [{
+      id: "TXN001",
+      name: "Recipient",
+      iban: "DE89370400440532013000",
+      // bic is optional
+      amount: 100.00,
+      remittanceInformation: "Payment",
+      end2endReference: "REF001" // Now required
+    }]
+  }]
+});
+```
+</CodeGroup>
+
+## Version comparison table
+
+| Feature | pain.001.001.02/03.02 | pain.001.001.03/03.03 | pain.008.001.01/03.01 | pain.008.001.02/03.02 |
+|---------|------------------------|------------------------|------------------------|------------------------|
+| Type | Credit Transfer | Credit Transfer | Direct Debit | Direct Debit |
+| BIC Required | Yes | No | No (creditor) | No (creditor) |
+| End-to-end Ref | Optional | Required | N/A | N/A |
+| Batch Booking | Document level | Position level | Document level | Position level |
+| Root Element | pain.001.001.02 | CstmrCdtTrfInitn | pain.008.001.01 | CstmrDrctDbtInitn |
+| Status | Older | **Current** | Older | **Current** |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Credit transfers" icon="arrow-right" href="/guides/credit-transfers">
+    Learn how to create credit transfers
+  </Card>
+  <Card title="Direct debits" icon="arrow-left" href="/guides/direct-debits">
+    Learn how to create direct debits
+  </Card>
+  <Card title="Validation" icon="shield-check" href="/guides/validation">
+    Understand validation for each version
+  </Card>
+  <Card title="Examples" icon="code" href="/guides/examples">
+    See examples using different versions
+  </Card>
+</CardGroup>

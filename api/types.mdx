@@ -1,0 +1,335 @@
+---
+title: "Enums & Types"
+description: "Type definitions for SEPA direct debit configuration"
+---
+
+## Overview
+
+This page documents the enumeration types used for configuring SEPA Direct Debit transactions. These types are only applicable when using `pain.008` format versions.
+
+<Note>
+These types are **only used for Direct Debit** transactions (pain.008.x.x). They are not applicable to Credit Transfer transactions (pain.001.x.x).
+</Note>
+
+## LOCAL_INSTRUMENTATION
+
+Defines the SEPA Direct Debit scheme to use for the transaction.
+
+### Type Definition
+
+```typescript
+type LOCAL_INSTRUMENTATION = "CORE" | "COR1" | "B2B";
+```
+
+### Values
+
+<AccordionGroup>
+  <Accordion title="CORE" icon="users">
+    **SEPA Core Direct Debit**
+    
+    - Used for consumer and business debtor accounts
+    - Most widely supported scheme
+    - Debtor has 8 weeks to request refund for authorized debits
+    - Pre-notification required (typically 14 days before collection)
+    - Submission deadline: D-5 business days for first/one-off, D-2 for recurring
+  </Accordion>
+
+  <Accordion title="COR1" icon="clock">
+    **SEPA Core Direct Debit with shortened submission deadline**
+    
+    - Similar to CORE but with faster processing
+    - Submission deadline: D-1 business day
+    - Being phased out - many banks now treat COR1 as CORE
+    - Same refund rights as CORE (8 weeks)
+    - Pre-notification still required
+  </Accordion>
+
+  <Accordion title="B2B" icon="building">
+    **SEPA Business-to-Business Direct Debit**
+    
+    - Only for transactions between businesses
+    - Debtor bank must verify mandate before first collection
+    - **No refund rights** - transaction is final once processed
+    - Submission deadline: D-1 business day
+    - Requires both parties to be registered businesses
+    - Higher security and pre-authorization requirements
+  </Accordion>
+</AccordionGroup>
+
+### Usage
+
+Set the `localInstrumentation` field in `SepaData` for Direct Debit transactions:
+
+```typescript
+import { createSepaXML } from "sepa-js-xml";
+
+const xml = createSepaXML({
+  painVersion: "pain.008.001.02",
+  localInstrumentation: "CORE", // or "COR1" or "B2B"
+  sequenceType: "RCUR",
+  id: "MSG-001",
+  creationDate: new Date(),
+  initiatorName: "My Company",
+  positions: [
+    {
+      id: "BATCH-001",
+      name: "My Company",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      collectionDate: new Date("2024-03-20"),
+      requestedExecutionDate: new Date(),
+      payments: [
+        {
+          id: "PMT-001",
+          name: "Customer Name",
+          iban: "GB29NWBK60161331926819",
+          bic: "NWBKGB2L",
+          amount: 50.00,
+          mandateId: "MANDATE-123",
+          mandateSignatureDate: new Date("2023-01-15"),
+          remittanceInformation: "Monthly subscription",
+        },
+      ],
+    },
+  ],
+});
+```
+
+### Choosing the Right Scheme
+
+| Use Case | Recommended Scheme |
+|----------|-------------------|
+| Consumer subscriptions | CORE |
+| One-time consumer payments | CORE |
+| Fast consumer collections | COR1 (check bank support) |
+| B2B subscriptions with no refunds | B2B |
+| B2B invoice payments | B2B |
+
+---
+
+## SEQUENCE_TYPE
+
+Indicates the type of direct debit transaction in relation to the mandate lifecycle.
+
+### Type Definition
+
+```typescript
+type SEQUENCE_TYPE = "FRST" | "RCUR" | "OOFF" | "FNAL";
+```
+
+### Values
+
+<AccordionGroup>
+  <Accordion title="FRST" icon="play">
+    **First Collection**
+    
+    - First direct debit for a new mandate
+    - Used when initiating a new recurring payment relationship
+    - Requires valid mandate signed by debtor
+    - Banks apply stricter validation for first collections
+    
+    **Example:** First monthly subscription payment after customer signs up
+  </Accordion>
+
+  <Accordion title="RCUR" icon="repeat">
+    **Recurring Collection**
+    
+    - All subsequent collections after the first
+    - Most common type for subscription services
+    - Mandate must already exist and have had FRST collection
+    - Banks expect regular intervals between collections
+    
+    **Example:** 2nd, 3rd, 4th... monthly subscription payments
+  </Accordion>
+
+  <Accordion title="OOFF" icon="check">
+    **One-Off Collection**
+    
+    - Single direct debit - mandate used only once
+    - No recurring relationship
+    - Mandate expires after this collection
+    - Simpler processing than FRST/RCUR cycle
+    
+    **Example:** One-time purchase, single donation, final settlement
+  </Accordion>
+
+  <Accordion title="FNAL" icon="flag-checkered">
+    **Final Collection**
+    
+    - Last collection for a recurring mandate
+    - Closes out the mandate relationship
+    - Use when customer cancels or relationship ends
+    - Must have had previous FRST and/or RCUR collections
+    
+    **Example:** Final subscription payment before cancellation
+  </Accordion>
+</AccordionGroup>
+
+### Usage
+
+Set the `sequenceType` field in `SepaData` for Direct Debit transactions:
+
+```typescript
+// One-off payment
+const oneOffXML = createSepaXML({
+  painVersion: "pain.008.001.02",
+  localInstrumentation: "CORE",
+  sequenceType: "OOFF",
+  // ... rest of configuration
+});
+
+// First recurring payment
+const firstPaymentXML = createSepaXML({
+  painVersion: "pain.008.001.02",
+  localInstrumentation: "CORE",
+  sequenceType: "FRST",
+  // ... rest of configuration
+});
+
+// Subsequent recurring payment
+const recurringPaymentXML = createSepaXML({
+  painVersion: "pain.008.001.02",
+  localInstrumentation: "CORE",
+  sequenceType: "RCUR",
+  // ... rest of configuration
+});
+
+// Final payment before cancellation
+const finalPaymentXML = createSepaXML({
+  painVersion: "pain.008.001.02",
+  localInstrumentation: "CORE",
+  sequenceType: "FNAL",
+  // ... rest of configuration
+});
+```
+
+### Sequence Flow Examples
+
+#### Recurring Subscription
+
+```
+FRST → RCUR → RCUR → RCUR → FNAL
+(1st)  (2nd)  (3rd)  (4th)  (Last payment)
+```
+
+#### One-Time Payment
+
+```
+OOFF
+(Single payment only)
+```
+
+#### Subscription with Early Cancellation
+
+```
+FRST → RCUR → FNAL
+(1st)  (2nd)  (Cancelled after 2 months)
+```
+
+### Validation Rules
+
+<Warning>
+**Important Sequence Rules:**
+
+- RCUR can only follow FRST or another RCUR
+- FNAL can only follow FRST or RCUR
+- OOFF is standalone and cannot be combined with other types
+- After FNAL, a new mandate (FRST or OOFF) is required
+</Warning>
+
+### Common Mistakes
+
+| Mistake | Correct Approach |
+|---------|------------------|
+| Using RCUR for the first payment | Use FRST for the first payment |
+| Using OOFF for subscriptions | Use FRST → RCUR sequence |
+| Not using FNAL when cancelling | Use FNAL for the last payment |
+| Using FNAL for one-off payments | Use OOFF instead |
+
+---
+
+## Combined Example
+
+Here's a complete example showing how to use both types together:
+
+```typescript
+import { createSepaXML } from "sepa-js-xml";
+
+// Monthly B2B subscription - first payment
+const firstMonthXML = createSepaXML({
+  painVersion: "pain.008.001.02",
+  localInstrumentation: "B2B",
+  sequenceType: "FRST",
+  id: "MSG-2024-01",
+  creationDate: new Date(),
+  initiatorName: "Software Company Ltd",
+  positions: [
+    {
+      id: "BATCH-JAN-2024",
+      name: "Software Company Ltd",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      collectionDate: new Date("2024-01-15"),
+      requestedExecutionDate: new Date(),
+      payments: [
+        {
+          id: "CUSTOMER-001-JAN",
+          name: "Client Business GmbH",
+          iban: "DE91100000000123456789",
+          bic: "MARKDEF1100",
+          amount: 499.00,
+          mandateId: "MANDATE-CUSTOMER-001",
+          mandateSignatureDate: new Date("2024-01-01"),
+          remittanceInformation: "Monthly SaaS subscription - January 2024",
+        },
+      ],
+    },
+  ],
+});
+
+// Second month - recurring payment
+const secondMonthXML = createSepaXML({
+  painVersion: "pain.008.001.02",
+  localInstrumentation: "B2B",
+  sequenceType: "RCUR",
+  id: "MSG-2024-02",
+  creationDate: new Date(),
+  initiatorName: "Software Company Ltd",
+  positions: [
+    {
+      id: "BATCH-FEB-2024",
+      name: "Software Company Ltd",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      collectionDate: new Date("2024-02-15"),
+      requestedExecutionDate: new Date(),
+      payments: [
+        {
+          id: "CUSTOMER-001-FEB",
+          name: "Client Business GmbH",
+          iban: "DE91100000000123456789",
+          bic: "MARKDEF1100",
+          amount: 499.00,
+          mandateId: "MANDATE-CUSTOMER-001",
+          mandateSignatureDate: new Date("2024-01-01"),
+          remittanceInformation: "Monthly SaaS subscription - February 2024",
+        },
+      ],
+    },
+  ],
+});
+```
+
+## Source Code Reference
+
+These types are defined in the main library file:
+
+- Type definitions: `~/workspace/source/src/index.ts:119-120`
+- Usage in SepaData interface: `~/workspace/source/src/index.ts:83-84`
+- Applied in XML generation: `~/workspace/source/src/index.ts:250-252`
+
+## See Also
+
+- [PAIN_VERSIONS](/api/pain-versions) - Available PAIN format versions
+- [SepaData Interface](/api/sepa-data) - Main configuration interface
+- [createSepaXML()](/api/create-sepa-xml) - Main XML generation function

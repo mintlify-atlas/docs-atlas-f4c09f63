@@ -1,0 +1,403 @@
+---
+title: 'createSepaXML'
+description: 'Generate SEPA XML files for credit transfers and direct debits'
+---
+
+## Function signature
+
+```typescript
+function createSepaXML(
+  sepaData: SepaData,
+  options?: Options
+): string
+```
+
+Generate a SEPA XML file compliant with various PAIN formats. The function validates data length constraints and optionally validates IBAN and BIC codes.
+
+## Parameters
+
+<ParamField path="sepaData" type="SepaData" required>
+  The SEPA payment data containing all transaction information.
+
+  <Expandable title="properties">
+    <ParamField path="id" type="string" required>
+      Message identifier. Maximum length is 35 characters.
+    </ParamField>
+
+    <ParamField path="creationDate" type="Date" required>
+      Date and time when the message was created.
+    </ParamField>
+
+    <ParamField path="initiatorName" type="string" required>
+      Name of the party initiating the payment. Maximum length is 70 characters.
+    </ParamField>
+
+    <ParamField path="positions" type="CreditorPayments[]" required>
+      Array of payment positions, each containing multiple transactions.
+    </ParamField>
+
+    <ParamField path="painVersion" type="PAIN_VERSIONS">
+      SEPA PAIN format version. Defaults to `"pain.001.001.03"`.
+      
+      Supported versions:
+      - `"pain.001.001.02"` - Credit Transfer v2
+      - `"pain.001.003.02"` - Credit Transfer v2
+      - `"pain.001.001.03"` - Credit Transfer v3
+      - `"pain.001.003.03"` - Credit Transfer v3
+      - `"pain.008.001.01"` - Direct Debit v1
+      - `"pain.008.003.01"` - Direct Debit v1
+      - `"pain.008.001.02"` - Direct Debit v2
+      - `"pain.008.003.02"` - Direct Debit v2
+    </ParamField>
+
+    <ParamField path="xmlVersion" type="string">
+      XML version. Defaults to `"1.0"`.
+    </ParamField>
+
+    <ParamField path="xmlEncoding" type="string">
+      XML encoding. Defaults to `"UTF-8"`.
+    </ParamField>
+
+    <ParamField path="xsiNamespace" type="string">
+      XSI namespace. Defaults to `"http://www.w3.org/2001/XMLSchema-instance"`.
+    </ParamField>
+
+    <ParamField path="xsiXmls" type="string">
+      XSI XML schema base URL. Defaults to `"urn:iso:std:iso:20022:tech:xsd:"`.
+    </ParamField>
+
+    <ParamField path="localInstrumentation" type="LOCAL_INSTRUMENTATION">
+      Local instrument code for direct debits. Values: `"CORE"`, `"COR1"`, or `"B2B"`.
+    </ParamField>
+
+    <ParamField path="sequenceType" type="SEQUENCE_TYPE">
+      Sequence type for direct debits. Values: `"FRST"`, `"RCUR"`, `"OOFF"`, or `"FNAL"`.
+    </ParamField>
+
+    <ParamField path="batchBooking" type="boolean">
+      Whether to use batch booking. Defaults to `true`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="options" type="Options">
+  Configuration options for XML generation and validation.
+
+  <Expandable title="properties">
+    <ParamField path="prettyPrint" type="boolean" default={false}>
+      If `true`, the XML output will be formatted with indentation for readability.
+    </ParamField>
+
+    <ParamField path="checkIBAN" type="boolean" default={true}>
+      If `true`, validates IBAN codes using IBANTools. Throws an error if invalid.
+    </ParamField>
+
+    <ParamField path="checkBIC" type="boolean" default={true}>
+      If `true`, validates BIC codes using IBANTools. Throws an error if invalid.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Return value
+
+<ResponseField name="string" type="string">
+  The generated SEPA XML document as a string.
+</ResponseField>
+
+## Examples
+
+### Basic credit transfer
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.02",
+  id: "1",
+  creationDate: new Date("2022-06-16"),
+  initiatorName: "Test Company",
+  positions: [
+    {
+      name: "Test",
+      iban: "DE02701500000000594937",
+      bic: "SSKMDEMM",
+      requestedExecutionDate: new Date("2022-06-16"),
+      id: "123",
+      payments: [
+        {
+          id: "Payment 1",
+          amount: 123,
+          iban: "DE02701500000000594937",
+          bic: "SSKMDEMM",
+          name: "Recipient Name",
+          remittanceInformation: "Invoice 12345",
+        },
+      ],
+    },
+  ],
+});
+```
+
+### Multiple payments with custom currency
+
+```typescript
+const xml = createSepaXML({
+  painVersion: "pain.001.001.02",
+  id: "1",
+  creationDate: new Date("2022-06-16"),
+  initiatorName: "Test Company",
+  positions: [
+    {
+      name: "Debtor Account",
+      iban: "DE02701500000000594937",
+      bic: "SSKMDEMM",
+      requestedExecutionDate: new Date("2022-06-16"),
+      id: "123",
+      payments: [
+        {
+          id: "Payment 1",
+          amount: 123,
+          iban: "DE02701500000000594937",
+          bic: "SSKMDEMM",
+          name: "Recipient 1",
+          remittanceInformation: "Invoice 001",
+          currency: "USD",
+        },
+        {
+          id: "Payment 2",
+          amount: 123.83,
+          iban: "DE02701500000000594937",
+          bic: "SSKMDEMM",
+          name: "Recipient 2",
+          remittanceInformation: "Invoice 002",
+          currency: "USD",
+        },
+      ],
+    },
+  ],
+});
+```
+
+### Credit transfer with end-to-end reference (pain.001.001.03)
+
+```typescript
+const xml = createSepaXML(
+  {
+    painVersion: "pain.001.001.03",
+    id: "Test1345",
+    creationDate: new Date("2022-06-16"),
+    initiatorName: "Test Company",
+    positions: [
+      {
+        id: "Test123",
+        batchBooking: false,
+        iban: "DE02701500000000594937",
+        bic: "SSKMDEMM",
+        requestedExecutionDate: new Date("2022-06-16"),
+        name: "Debtor Name",
+        payments: [
+          {
+            id: "123",
+            amount: 230,
+            currency: "EUR",
+            bic: "SSKMDEMM",
+            name: "Creditor Company",
+            iban: "DE02701500000000594937",
+            remittanceInformation: "Invoice payment",
+            end2endReference: "E2E-REF-001",
+          },
+        ],
+      },
+    ],
+  }
+);
+```
+
+### Credit transfer without BIC (optional in pain.001.001.03)
+
+```typescript
+const xml = createSepaXML(
+  {
+    painVersion: "pain.001.001.03",
+    id: "Test1345",
+    creationDate: new Date("2022-06-16"),
+    initiatorName: "Test Company",
+    positions: [
+      {
+        id: "Test123",
+        batchBooking: false,
+        iban: "DE02701500000000594937",
+        requestedExecutionDate: new Date("2022-06-16"),
+        name: "Debtor Name",
+        payments: [
+          {
+            id: "123",
+            amount: 230,
+            currency: "EUR",
+            name: "Creditor Company",
+            iban: "DE02701500000000594937",
+            remittanceInformation: "Invoice payment",
+            end2endReference: "E2E-REF-001",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    checkIBAN: true,
+    checkBIC: true,
+  }
+);
+```
+
+### Pretty printed XML output
+
+```typescript
+const xml = createSepaXML(
+  {
+    painVersion: "pain.001.001.03",
+    id: "MSG-001",
+    creationDate: new Date("2022-06-16"),
+    initiatorName: "My Company",
+    positions: [
+      {
+        id: "PMT-001",
+        iban: "DE02701500000000594937",
+        bic: "SSKMDEMM",
+        requestedExecutionDate: new Date("2022-06-20"),
+        name: "My Company Account",
+        payments: [
+          {
+            id: "TXN-001",
+            amount: 100.50,
+            name: "Supplier Inc",
+            iban: "DE02701500000000594937",
+            bic: "SSKMDEMM",
+            remittanceInformation: "Payment for services",
+            end2endReference: "INV-2022-001",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    prettyPrint: true,
+    checkIBAN: true,
+    checkBIC: true,
+  }
+);
+```
+
+### Disabling validation
+
+```typescript
+const xml = createSepaXML(
+  {
+    painVersion: "pain.001.001.03",
+    id: "Test1345",
+    creationDate: new Date("2022-06-16"),
+    initiatorName: "Test Company",
+    positions: [
+      {
+        id: "Test123",
+        batchBooking: false,
+        iban: "DE02701500000000594937",
+        bic: "TESTBIC",
+        requestedExecutionDate: new Date("2022-06-16"),
+        name: "Pos 1",
+        payments: [
+          {
+            id: "123",
+            amount: 230,
+            currency: "EUR",
+            bic: "TESTBIC",
+            name: "Money Company",
+            iban: "DE02701500000000594937",
+            remittanceInformation: "Money please",
+            end2endReference: "lol",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    checkIBAN: false,
+    checkBIC: false,
+  }
+);
+```
+
+## Error handling
+
+The function throws errors in the following cases:
+
+### Length validation errors
+
+```typescript
+try {
+  createSepaXML({
+    id: "123456789123456789123456789123456789", // Too long (max 35)
+    creationDate: new Date(),
+    initiatorName: "Test",
+    positions: [],
+  });
+} catch (error) {
+  // Error: Max length for sepaData.id is 35 (123456789123456789123456789123456789)
+}
+```
+
+### IBAN validation errors
+
+```typescript
+try {
+  createSepaXML({
+    id: "Test",
+    creationDate: new Date(),
+    initiatorName: "Test",
+    positions: [
+      {
+        name: "Test",
+        iban: "InvalidIBAN",
+        bic: "SSKMDEMM",
+        id: "123",
+        payments: [],
+        requestedExecutionDate: new Date(),
+      },
+    ],
+  });
+} catch (error) {
+  // Error: sepaData.positions[0].iban is not valid (InvalidIBAN)
+}
+```
+
+### BIC validation errors
+
+```typescript
+try {
+  createSepaXML({
+    id: "Test",
+    creationDate: new Date(),
+    initiatorName: "Test",
+    positions: [
+      {
+        name: "Test",
+        iban: "DE02701500000000594937",
+        bic: "InvalidBIC",
+        id: "123",
+        payments: [],
+        requestedExecutionDate: new Date(),
+      },
+    ],
+  });
+} catch (error) {
+  // Error: sepaData.positions[0].bic is not valid (InvalidBIC)
+}
+```
+
+## Notes
+
+- The function automatically calculates `NbOfTxs` (number of transactions) and `CtrlSum` (control sum) based on the provided payments
+- BIC is optional for SEPA Credit Transfers (pain.001.001.03 and pain.001.003.03) and SEPA Direct Debits on the creditor side
+- The `end2endReference` field is required when using pain.001.001.03 format
+- All IBAN and BIC validations use the [ibantools](https://github.com/Simplify/ibantools) library
+- Date fields are automatically formatted to ISO 8601 format as required by SEPA standards

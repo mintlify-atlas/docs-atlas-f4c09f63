@@ -1,0 +1,379 @@
+---
+title: Credit transfers
+description: Complete guide to creating SEPA credit transfer payments with Sepa JS XML
+---
+
+Credit transfers allow you to send money from your account to other accounts. This guide covers everything you need to know about creating credit transfer XML files.
+
+## Basic credit transfer
+
+Here's a simple example of creating a credit transfer:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03",
+  id: "MSG001",
+  creationDate: new Date("2022-06-16"),
+  initiatorName: "My Company",
+  positions: [{
+    id: "PMT001",
+    name: "My Company",
+    iban: "DE02701500000000594937",
+    bic: "SSKMDEMM",
+    requestedExecutionDate: new Date("2022-06-16"),
+    payments: [{
+      id: "TXN001",
+      name: "Supplier Ltd",
+      iban: "DE89370400440532013000",
+      bic: "COBADEFFXXX",
+      amount: 150.00,
+      remittanceInformation: "Invoice payment",
+      end2endReference: "INV12345"
+    }]
+  }]
+});
+```
+
+## Required fields
+
+### Document level
+
+<ParamField path="painVersion" type="string" required>
+  The PAIN format version. Use `pain.001.001.02`, `pain.001.003.02`, `pain.001.001.03`, or `pain.001.003.03` for credit transfers.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  Unique message identifier. Maximum length: 35 characters.
+</ParamField>
+
+<ParamField path="creationDate" type="Date" required>
+  When the payment file was created.
+</ParamField>
+
+<ParamField path="initiatorName" type="string" required>
+  Name of the party initiating the payment. Maximum length: 70 characters.
+</ParamField>
+
+### Position level (debtor)
+
+<ParamField path="positions[].id" type="string" required>
+  Unique payment information identifier. Maximum length: 35 characters.
+</ParamField>
+
+<ParamField path="positions[].name" type="string" required>
+  Debtor name (your company). Maximum length: 70 characters.
+</ParamField>
+
+<ParamField path="positions[].iban" type="string" required>
+  Debtor IBAN (your account).
+</ParamField>
+
+<ParamField path="positions[].bic" type="string">
+  Debtor BIC. Optional for SEPA payments in versions 03.
+</ParamField>
+
+<ParamField path="positions[].requestedExecutionDate" type="Date" required>
+  When you want the payment to be executed.
+</ParamField>
+
+### Payment level (creditor)
+
+<ParamField path="payments[].id" type="string" required>
+  Unique transaction identifier. Maximum length: 35 characters.
+</ParamField>
+
+<ParamField path="payments[].name" type="string" required>
+  Creditor name (recipient). Maximum length: 70 characters.
+</ParamField>
+
+<ParamField path="payments[].iban" type="string" required>
+  Creditor IBAN (recipient account).
+</ParamField>
+
+<ParamField path="payments[].bic" type="string">
+  Creditor BIC. Optional for SEPA payments in versions 03.
+</ParamField>
+
+<ParamField path="payments[].amount" type="number" required>
+  Payment amount in the specified currency.
+</ParamField>
+
+<ParamField path="payments[].remittanceInformation" type="string" required>
+  Payment description or reference information.
+</ParamField>
+
+<ParamField path="payments[].end2endReference" type="string">
+  End-to-end reference. Required for pain.001.001.03 and pain.001.003.03.
+</ParamField>
+
+## Execution dates
+
+The `requestedExecutionDate` determines when the bank should execute the payment:
+
+```typescript
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+
+const xml = createSepaXML({
+  // ... other fields
+  positions: [{
+    // ... other fields
+    requestedExecutionDate: tomorrow, // Execute tomorrow
+    payments: [/* ... */]
+  }]
+});
+```
+
+<Note>
+Most banks require the execution date to be at least one business day in the future. Check with your bank for specific requirements.
+</Note>
+
+## Multiple payments
+
+You can include multiple payments in a single position:
+
+```typescript
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03",
+  id: "MSG001",
+  creationDate: new Date(),
+  initiatorName: "My Company",
+  positions: [{
+    id: "PMT001",
+    name: "My Company",
+    iban: "DE02701500000000594937",
+    requestedExecutionDate: new Date(),
+    payments: [
+      {
+        id: "TXN001",
+        name: "Supplier A",
+        iban: "DE89370400440532013000",
+        amount: 100.00,
+        remittanceInformation: "Invoice 001",
+        end2endReference: "INV001"
+      },
+      {
+        id: "TXN002",
+        name: "Supplier B",
+        iban: "DE89370400440532013001",
+        amount: 200.00,
+        remittanceInformation: "Invoice 002",
+        end2endReference: "INV002"
+      },
+      {
+        id: "TXN003",
+        name: "Supplier C",
+        iban: "DE89370400440532013002",
+        amount: 150.00,
+        remittanceInformation: "Invoice 003",
+        end2endReference: "INV003"
+      }
+    ]
+  }]
+});
+```
+
+## Batch booking
+
+Control whether payments are booked individually or as a batch:
+
+<Tabs>
+  <Tab title="Position level">
+    ```typescript
+    const xml = createSepaXML({
+      painVersion: "pain.001.001.03",
+      // ... other fields
+      positions: [{
+        // ... other fields
+        batchBooking: false, // Each payment booked separately
+        payments: [/* ... */]
+      }]
+    });
+    ```
+    
+    Available in PAIN version 03 only. Controls booking at the position level.
+  </Tab>
+  
+  <Tab title="Document level">
+    ```typescript
+    const xml = createSepaXML({
+      painVersion: "pain.001.001.02",
+      batchBooking: true, // All payments in one booking
+      // ... other fields
+      positions: [/* ... */]
+    });
+    ```
+    
+    Available in PAIN version 02 only. Controls booking at the document level.
+  </Tab>
+</Tabs>
+
+<Accordion title="What is batch booking?">
+  **Batch booking (true)**: All payments appear as a single entry on your account statement with the total amount.
+  
+  **Individual booking (false)**: Each payment appears as a separate entry on your account statement.
+  
+  Default value is `true`.
+</Accordion>
+
+## Different currencies
+
+While SEPA primarily uses EUR, you can specify other currencies:
+
+```typescript
+const xml = createSepaXML({
+  painVersion: "pain.001.001.02",
+  // ... other fields
+  positions: [{
+    // ... other fields
+    payments: [
+      {
+        id: "TXN001",
+        name: "US Supplier",
+        iban: "DE89370400440532013000",
+        bic: "COBADEFFXXX",
+        amount: 100.00,
+        currency: "USD", // Specify currency
+        remittanceInformation: "Payment in USD"
+      }
+    ]
+  }]
+});
+```
+
+<Warning>
+Most SEPA payments must be in EUR. Non-EUR currencies may be rejected by your bank. Check with your bank before using other currencies.
+</Warning>
+
+## BIC requirements
+
+The BIC (Bank Identifier Code) requirements vary by PAIN version:
+
+<Tabs>
+  <Tab title="Version 02 (pain.001.001.02)">
+    BIC is **required** for both debtor and creditor:
+    
+    ```typescript
+    positions: [{
+      bic: "SSKMDEMM", // Required
+      payments: [{
+        bic: "COBADEFFXXX" // Required
+      }]
+    }]
+    ```
+  </Tab>
+  
+  <Tab title="Version 03 (pain.001.001.03)">
+    BIC is **optional** for both debtor and creditor:
+    
+    ```typescript
+    positions: [{
+      iban: "DE02701500000000594937",
+      // bic is optional
+      payments: [{
+        iban: "DE89370400440532013000"
+        // bic is optional
+      }]
+    }]
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+From the source code (index.ts:293-295, index.ts:381-383): BIC is optional for pain.001.001.03 and pain.001.003.03. The library automatically handles missing BIC codes for these versions.
+</Note>
+
+## End-to-end reference
+
+The end-to-end reference tracks payments throughout the payment chain:
+
+```typescript
+payments: [{
+  id: "TXN001",
+  end2endReference: "INV-2024-12345", // Optional in v02, required in v03
+  // ... other fields
+}]
+```
+
+<Tabs>
+  <Tab title="Version 02">
+    End-to-end reference is **optional**.
+  </Tab>
+  
+  <Tab title="Version 03">
+    End-to-end reference is **required**. From the source code (index.ts:337-341), an error is thrown if missing:
+    
+    ```
+    Error: sepaData.positions[0].payments[0].end2endReference is required with the selected pain version
+    ```
+  </Tab>
+</Tabs>
+
+## Complete example
+
+Here's a complete credit transfer with all features:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  painVersion: "pain.001.001.03",
+  id: "MSG20240316001",
+  creationDate: new Date("2024-03-16T10:30:00"),
+  initiatorName: "Acme Corporation Ltd",
+  
+  positions: [{
+    id: "BATCH001",
+    name: "Acme Corporation Ltd",
+    iban: "DE02701500000000594937",
+    batchBooking: false,
+    requestedExecutionDate: new Date("2024-03-17"),
+    
+    payments: [
+      {
+        id: "PAY001",
+        name: "Office Supplies Inc",
+        iban: "DE89370400440532013000",
+        amount: 1250.50,
+        currency: "EUR",
+        remittanceInformation: "Office supplies - Invoice OS-2024-0315",
+        end2endReference: "OS20240315"
+      },
+      {
+        id: "PAY002",
+        name: "Tech Solutions GmbH",
+        iban: "DE89370400440532013001",
+        amount: 3500.00,
+        currency: "EUR",
+        remittanceInformation: "Software license renewal Q2 2024",
+        end2endReference: "SW20240316"
+      }
+    ]
+  }]
+}, {
+  prettyPrint: true,
+  checkIBAN: true,
+  checkBIC: true
+});
+
+console.log(xml);
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Direct debits" icon="arrow-left" href="/guides/direct-debits">
+    Learn how to collect payments with direct debits
+  </Card>
+  <Card title="PAIN versions" icon="code-branch" href="/guides/pain-versions">
+    Compare all PAIN format versions
+  </Card>
+  <Card title="Validation" icon="shield-check" href="/guides/validation">
+    Understand validation and error handling
+  </Card>
+  <Card title="Examples" icon="code" href="/guides/examples">
+    View more real-world examples
+  </Card>
+</CardGroup>
