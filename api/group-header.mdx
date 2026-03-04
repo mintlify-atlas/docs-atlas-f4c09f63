@@ -1,0 +1,97 @@
+---
+title: GroupHeader
+description: Interface representing the group header structure in SEPA XML documents
+---
+
+The `GroupHeader` interface represents the internal structure of the group header element in SEPA XML files. This interface is typically not used directly by users of the library, as it's constructed automatically by the `createSepaXML()` function.
+
+## Interface definition
+
+```typescript
+export interface GroupHeader {
+  /** Max length is 35 */
+  MsgId: string;
+  CreDtTm: string; // Date YYYY-MM-DDThh:mm:ss
+  NbOfTxs: number;
+  CtrlSum: string; // number
+  BtchBookg?: "true" | "false"; // boolean
+  InitgPty: {
+    /** Min length is 1 */
+    /** Max length is 70 */
+    Nm: string;
+  };
+  Grpg?: "MIXD";
+}
+```
+
+## Properties
+
+<ParamField path="MsgId" type="string" required>
+  Message identification. Maximum length is 35 characters. This is automatically set from `SepaData.id`.
+</ParamField>
+
+<ParamField path="CreDtTm" type="string" required>
+  Creation date and time in ISO 8601 format (`YYYY-MM-DDThh:mm:ss`). This is automatically generated from `SepaData.creationDate`.
+</ParamField>
+
+<ParamField path="NbOfTxs" type="number" required>
+  Number of transactions. This is automatically calculated as the total count of all payments across all positions.
+</ParamField>
+
+<ParamField path="CtrlSum" type="string" required>
+  Control sum (total amount of all transactions). This is automatically calculated as the sum of all payment amounts, formatted as a decimal string with 2 decimal places.
+</ParamField>
+
+<ParamField path="BtchBookg" type="'true' | 'false'">
+  Batch booking indicator. Only included in PAIN version 2 formats (pain.001.001.02, pain.001.003.02, etc.). Set from `SepaData.batchBooking`, defaulting to `"true"`.
+</ParamField>
+
+<ParamField path="InitgPty" type="object" required>
+  Initiating party information.
+  
+  <Expandable title="properties">
+    <ParamField path="Nm" type="string" required>
+      Name of the initiating party. Minimum length is 1, maximum length is 70 characters. This is automatically set from `SepaData.initiatorName`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="Grpg" type="'MIXD'">
+  Grouping indicator. Only included in PAIN version 2 formats. Always set to `"MIXD"` when present.
+</ParamField>
+
+## Usage note
+
+The `GroupHeader` interface is exported for TypeScript type checking purposes, but you typically don't need to construct or manipulate GroupHeader objects directly. The `createSepaXML()` function automatically builds the group header from your `SepaData` input.
+
+The group header is constructed internally according to the SEPA XML schema requirements and varies slightly between PAIN format versions:
+
+- **Version 2 formats** (e.g., pain.001.001.02): Include `BtchBookg` and `Grpg` fields
+- **Version 3 formats** (e.g., pain.001.001.03): Omit `BtchBookg` and `Grpg` fields
+
+## Example
+
+While you don't create GroupHeader objects directly, here's how the data flows:
+
+```typescript
+import { createSepaXML } from 'sepa-js-xml';
+
+const xml = createSepaXML({
+  id: "MSG-2024-001",                    // → MsgId
+  creationDate: new Date(),              // → CreDtTm
+  initiatorName: "My Company Ltd",       // → InitgPty.Nm
+  batchBooking: true,                    // → BtchBookg (if version 2)
+  positions: [/* ... */]                 // → NbOfTxs, CtrlSum calculated
+});
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="SepaData" icon="file-lines" href="/api/sepa-data">
+    Main data structure that provides values for GroupHeader
+  </Card>
+  <Card title="createSepaXML" icon="code" href="/api/create-sepa-xml">
+    Function that constructs the GroupHeader automatically
+  </Card>
+</CardGroup>

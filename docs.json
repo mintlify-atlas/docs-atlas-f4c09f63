@@ -59,7 +59,8 @@
               "api/sepa-data",
               "api/creditor-payments",
               "api/payment",
-              "api/options"
+              "api/options",
+              "api/group-header"
             ]
           },
           {
